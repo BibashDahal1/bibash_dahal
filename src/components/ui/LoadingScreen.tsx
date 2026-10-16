@@ -52,6 +52,8 @@ const CSS = `
 
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
 
+type Point = { x: number; y: number };
+
 /** Covers the page until the 3D scene is built. The monogram is
  *  written stroke by stroke as loading progresses; when the last
  *  stroke is finished the screen fades away. */
@@ -124,22 +126,26 @@ export default function LoadingScreen() {
   // distribute the written length across the strokes in order
   const total = lens ? lens.reduce((a, b) => a + b, 0) : 0;
   const drawn = (shown / 100) * total;
-  let acc = 0;
-  let tip: { x: number; y: number } | null = null;
 
-  const fracs = PATHS.map((_, i) => {
-    if (!lens) return 0;
-    const f = clamp01((drawn - acc) / lens[i]);
-    if (f > 0 && f < 1) {
-      const el = pathRefs.current[i];
-      if (el) {
-        const pt = el.getPointAtLength(lens[i] * f);
-        tip = { x: pt.x, y: pt.y };
+  let tip: Point | null = null;
+  const fracs: number[] = [];
+
+  let acc = 0;
+  for (let i = 0; i < PATHS.length; i++) {
+    let f = 0;
+    if (lens) {
+      f = clamp01((drawn - acc) / lens[i]);
+      if (f > 0 && f < 1) {
+        const el = pathRefs.current[i];
+        if (el) {
+          const pt = el.getPointAtLength(lens[i] * f);
+          tip = { x: pt.x, y: pt.y };
+        }
       }
+      acc += lens[i];
     }
-    acc += lens[i];
-    return f;
-  });
+    fracs.push(f);
+  }
 
   const renderStrokes = (stroke: string, glow = false) =>
     PATHS.map((d, i) => {
@@ -167,6 +173,8 @@ export default function LoadingScreen() {
         />
       );
     });
+
+  const penTip = tip as Point | null;
 
   return (
     <div
@@ -214,16 +222,16 @@ export default function LoadingScreen() {
           <g>{renderStrokes(`url(#${gradId})`)}</g>
 
           {/* glowing pen tip while writing */}
-          {tip && !complete && (
+          {penTip && !complete && (
             <g>
               <circle
-                cx={tip.x}
-                cy={tip.y}
+                cx={penTip.x}
+                cy={penTip.y}
                 r="26"
                 fill="#7ae6ff"
                 opacity="0.28"
               />
-              <circle cx={tip.x} cy={tip.y} r="11" fill="#e8fbff" />
+              <circle cx={penTip.x} cy={penTip.y} r="11" fill="#e8fbff" />
             </g>
           )}
         </svg>
