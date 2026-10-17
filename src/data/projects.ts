@@ -23,6 +23,7 @@ export const PROJECTS: Project[] = [
       "Unique selling point: an immersive 3D virtual exhibition where artists show their work in virtual rooms and visitors buy tickets to explore online.",
       "Backend in Python/Django, with Redis and WebSockets powering real-time auction bidding and live exhibition interactions.",
       "Frontend in React.js, with a Three.js-based 3D gallery alongside the core marketplace UI.",
+      "Cutomizatible Room Color and size, with Music Selection",
     ],
     tech: ["React.js", "Three.js", "Django", "Redis", "WebSockets"],
     color: "#ffcf5a",
@@ -38,34 +39,28 @@ export const PROJECTS: Project[] = [
         src: "https://res.cloudinary.com/urvcfynq/video/upload/v1789653500/artigo2.mp4",
         caption: "Platform walkthrough",
       }, // REPLACE
-      { type: "image", src: "sample", caption: "Marketplace home" }, // REPLACE
-      { type: "image", src: "cld-sample", caption: "Live auction" }, // REPLACE
-      { type: "image", src: "cld-sample-2", caption: "3D exhibition" }, // REPLACE
-      { type: "image", src: "cld-sample-3", caption: "Artist dashboard" }, // REPLACE
+      {
+        type: "video",
+        src: "https://res.cloudinary.com/urvcfynq/video/upload/v1789653188/artigo1.mp4",
+        caption: "Virtual Exhibition Creation",
+      }, // REPLACE
+      {
+        type: "image",
+        src: "https://res.cloudinary.com/urvcfynq/image/upload/v1792247826/Screenshot_2026-10-17_201844.png",
+        caption: "Entrance Room",
+      }, // REPLACE
+      {
+        type: "image",
+        src: "https://res.cloudinary.com/urvcfynq/image/upload/v1792247826/Screenshot_2026-10-17_201931.png",
+        caption: "Multi Rooms",
+      }, // REPLACE
+      {
+        type: "image",
+        src: "https://res.cloudinary.com/urvcfynq/image/upload/v1792247827/Screenshot_2026-10-17_201959.png",
+        caption: "Virtual Experience",
+      }, // REPLACE
     ],
   },
-  {
-    id: "nepali-ocr",
-    name: "AI Nepali Image Text Recognition & Translation",
-    label: "Nepali OCR",
-    kind: "Final year project",
-    tagline: "Extract and translate Nepali text from images",
-    description:
-      "An OCR system that reads Nepali text out of images and translates it, built on a custom image-processing pipeline.",
-    highlights: [
-      "Custom image-processing pipeline that prepares images for recognition.",
-      "Delivered as a full-stack web application combining image processing, OCR and translation APIs.",
-    ],
-    tech: ["Image processing", "OCR", "Translation APIs", "Full-stack web app"],
-    color: "#5eeaff",
-    badge: "OCR",
-    media: [
-      { type: "video", src: "elephants", caption: "Demo" }, // REPLACE
-      { type: "image", src: "sample", caption: "Input image" }, // REPLACE
-      { type: "image", src: "cld-sample-3", caption: "Recognised text" }, // REPLACE
-    ],
-  },
-
   {
     id: "plannedit",
     name: "PlannedIT",
@@ -79,6 +74,7 @@ export const PROJECTS: Project[] = [
       "Location-based activity discovery, joining requests, group chat, and participant coordination help people connect and plan activities together.",
       "Built with Flutter and Django REST Framework, using PostgreSQL, JWT authentication, and a scalable backend architecture.",
       "Designed with safety-focused features to help users review participation requests and make more informed decisions before joining activities.",
+      "Used Custom Icons Boxes and Background With unique Design and Feel to the User Interface.",
     ],
     tech: [
       "Flutter",
@@ -99,7 +95,7 @@ export const PROJECTS: Project[] = [
     media: [
       {
         type: "video",
-        src: "https://res.cloudinary.com/urvcfynq/video/upload/v1792070554/plannedIt.mp4",
+        src: "https://res.cloudinary.com/urvcfynq/video/upload/v1792252556/PlannedItVideo_1.mp4",
         caption: "PlannedIt",
       },
       {
@@ -114,9 +110,138 @@ export const PROJECTS: Project[] = [
       },
       {
         type: "image",
-        src: "YOUR_CLOUDINARY_PLANNEDIT_SCREENSHOT",
-        caption: "Chat and group coordination",
+        src: "https://res.cloudinary.com/urvcfynq/image/upload/v1792252039/profileplanned.png",
+        caption: "Profile",
       },
+      {
+        type: "image",
+        src: "https://res.cloudinary.com/urvcfynq/image/upload/v1792252036/plan2.png",
+        caption: "Dashboard Groups",
+      },
+      {
+        type: "image",
+        src: "https://res.cloudinary.com/urvcfynq/image/upload/v1792252036/plan3.png",
+        caption: "Dashboard Cost Management",
+      },
+      {
+        type: "image",
+        src: "https://res.cloudinary.com/urvcfynq/image/upload/v1792252036/plan4.png",
+        caption: "Dashboard Reviews",
+      },
+      {
+        type: "image",
+        src: "https://res.cloudinary.com/urvcfynq/image/upload/v1792252036/plan5.png",
+        caption: "Dashboard Requests",
+      },
+      {
+        type: "image",
+        src: "https://res.cloudinary.com/urvcfynq/image/upload/v1792252036/plan6.png",
+        caption: "Dashboard Chat Management",
+      },
+      {
+        type: "image",
+        src: "https://res.cloudinary.com/urvcfynq/image/upload/v1792252036/plan7.png",
+        caption: "Dashboard Chat Management 1",
+      },
+      {
+        type: "image",
+        src: "https://res.cloudinary.com/urvcfynq/image/upload/v1792252036/plan8.png",
+        caption: "Dashboard Chat",
+      },
+    ],
+  },
+  {
+    id: "Artigo",
+    name: "Artigo",
+    label: "Artigo",
+    kind: "Full-stack platform",
+    tagline:
+      "Ecommerce platform for artists to sell artworks, digital art and photography",
+    description:
+      "A full-stack platform where artists sell artworks, digital art and photography, with live auctions and bidding.",
+    highlights: [
+      "Unique selling point: an immersive 3D virtual exhibition where artists show their work in virtual rooms and visitors buy tickets to explore online.",
+      "Backend in Python/Django, with Redis and WebSockets powering real-time auction bidding and live exhibition interactions.",
+      "Frontend in React.js, with a Three.js-based 3D gallery alongside the core marketplace UI.",
+    ],
+    tech: ["React.js", "Three.js", "Django", "Redis", "WebSockets"],
+    color: "#ffcf5a",
+    badge: "KG",
+    logo: "/logos/logo.png",
+    link: {
+      label: "Visit arti-go.vercel.app",
+      url: "https://arti-go.vercel.app",
+    },
+    media: [
+      {
+        type: "video",
+        src: "https://res.cloudinary.com/urvcfynq/video/upload/v1792247163/Artigo3_1.mp4",
+        caption: "Site Walkthrough",
+      }, // REPLACE
+      {
+        type: "image",
+        src: "https://res.cloudinary.com/urvcfynq/image/upload/v1792248721/ss1.png",
+        caption: "Browse Section",
+      }, // REPLACE
+      {
+        type: "image",
+        src: "https://res.cloudinary.com/urvcfynq/image/upload/v1792248720/ss2.png",
+        caption: "Art Detail and Buy",
+      }, // REPLACE
+      {
+        type: "image",
+        src: "https://res.cloudinary.com/urvcfynq/image/upload/v1792248720/ss3.png",
+        caption: "Comments and Reviews",
+      }, // REPLACE
+      {
+        type: "image",
+        src: "https://res.cloudinary.com/urvcfynq/image/upload/v1792248720/ss4.png",
+        caption: "Bidders and Auction",
+      },
+      {
+        type: "image",
+        src: "https://res.cloudinary.com/urvcfynq/image/upload/v1792248720/ss5.png",
+        caption: "Exhibition Detail and Buy Tickets",
+      },
+      {
+        type: "image",
+        src: "https://res.cloudinary.com/urvcfynq/image/upload/v1792248720/ss6.png",
+        caption: "Dashboard Overview",
+      }, // REPLACE
+    ],
+  },
+  {
+    id: "nepali-ocr",
+    name: "AI Nepali Image Text Recognition & Translation",
+    label: "Nepali OCR- Aksar",
+    kind: "Final year project",
+    tagline: "Extract and translate Nepali text from images",
+    description:
+      "An OCR system that reads Nepali text out of images and translates it, built on a custom image-processing pipeline.",
+    highlights: [
+      "Custom image-processing pipeline that prepares images for recognition.",
+      "Delivered as a full-stack web application combining image processing, OCR and translation APIs.",
+    ],
+    tech: ["Image processing", "OCR", "Translation APIs", "Full-stack web app"],
+    color: "#5eeaff",
+    logo: "/logos/Aksar.png",
+    badge: "OCR",
+    media: [
+      {
+        type: "image",
+        src: "https://res.cloudinary.com/urvcfynq/image/upload/v1792249311/Aksar1.png",
+        caption: "Landing Page Aksar",
+      }, // REPLACE
+      {
+        type: "image",
+        src: "https://res.cloudinary.com/urvcfynq/image/upload/v1792249310/Aksar2.png",
+        caption: "Aksar Zone",
+      }, // REPLACE
+      {
+        type: "image",
+        src: "https://res.cloudinary.com/urvcfynq/image/upload/v1792249310/Aksar3.png",
+        caption: "OCR and Translator Hub",
+      }, // REPLACE
     ],
   },
 ];
