@@ -150,3 +150,35 @@ export const ROOM_LAYOUTS: Record<RoomId, RoomLayout> = {
   office: OFFICE,
   projects: PROJECTS_ROOM,
 };
+
+// ======================= PLACEHOLDER ROOM =======================
+// Used by <EmptyRoom /> for any destination that has no real furniture yet.
+
+/** Size of the placeholder room. */
+export const EMPTY_ROOM = { width: 20, depth: 20, height: 5.5 } as const;
+
+export interface RoomTheme {
+  wall: string;
+  accent: string;
+  title: string;
+  subtitle: string;
+}
+
+/**
+ * Keyed by string so any `Destination` value type-checks.
+ * Placeholder colours/text: swap in your original values.
+ */
+export const ROOM_THEMES: Record<string, RoomTheme> = {
+  office: {
+    wall: "#d9d2c3",
+    accent: "#e0a64a",
+    title: "OFFICE",
+    subtitle: "Skills & experience",
+  },
+  projects: {
+    wall: "#cfd3dc",
+    accent: "#4aa8e0",
+    title: "PROJECTS",
+    subtitle: "Selected work",
+  },
+};
