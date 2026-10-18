@@ -17,6 +17,8 @@ type Props = {
   /** z of the centre of every bay: ceiling rings are placed above them. */
   bayZs: number[];
   accent?: string;
+  /** The room title goes on the far wall, unless a featured project takes it (then it goes on the entrance wall). */
+  titleOnFarWall?: boolean;
   children?: ReactNode;
 };
 
@@ -63,6 +65,7 @@ export default function ProjectsShell({
   dims,
   bayZs,
   accent = "#35d0ff",
+  titleOnFarWall = true,
   children,
 }: Props) {
   const { width: W, depth: D, height: H } = dims;
@@ -86,6 +89,9 @@ export default function ProjectsShell({
     const n = Math.max(2, Math.round(D / 12));
     return Array.from({ length: n }, (_, i) => -D / 2 + (D / n) * (i + 0.5));
   }, [D]);
+
+  const titleZ = titleOnFarWall ? -D / 2 + 0.06 : D / 2 - 0.06;
+  const titleRot = titleOnFarWall ? 0 : Math.PI;
 
   return (
     <>
@@ -199,27 +205,29 @@ export default function ProjectsShell({
         accent={accent}
       />
 
-      {/* title on the far wall */}
-      <Text
-        position={[0, 3.6, -D / 2 + 0.06]}
-        fontSize={1.1}
-        letterSpacing={0.25}
-        color={accent}
-        anchorX="center"
-        anchorY="middle"
-      >
-        PROJECTS
-      </Text>
-      <Text
-        position={[0, 2.7, -D / 2 + 0.06]}
-        fontSize={0.24}
-        letterSpacing={0.35}
-        color="#9fb4c8"
-        anchorX="center"
-        anchorY="middle"
-      >
-        AIM AT A SCREEN, IMAGE OR HOLOGRAM
-      </Text>
+      {/* room title */}
+      <group position={[0, 0, titleZ]} rotation={[0, titleRot, 0]}>
+        <Text
+          position={[0, 3.6, 0]}
+          fontSize={1.1}
+          letterSpacing={0.25}
+          color={accent}
+          anchorX="center"
+          anchorY="middle"
+        >
+          PROJECTS
+        </Text>
+        <Text
+          position={[0, 2.7, 0]}
+          fontSize={0.24}
+          letterSpacing={0.35}
+          color="#9fb4c8"
+          anchorX="center"
+          anchorY="middle"
+        >
+          AIM AT A SCREEN, IMAGE OR HOLOGRAM
+        </Text>
+      </group>
 
       <DataMotes
         width={W}

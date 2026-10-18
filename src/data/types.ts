@@ -42,6 +42,8 @@ export interface Project {
   logo?: string | null;
   badge?: string;
   link?: { label: string; url: string };
+  /** The first featured project gets the front wall of the Projects room instead of a side bay. */
+  featured?: boolean;
   /** Videos and images shown in the project's bay. The first video becomes the big screen. */
   media?: ProjectMedia[];
 }

@@ -78,45 +78,69 @@ export const OFFICE: RoomLayout = {
 };
 
 // =========================== PROJECTS ===========================
-// One "bay" per project, alternating left and right wall, two bays per row.
-// Everything below is computed from PROJECTS.length, so adding a project needs no layout edits.
+// The first project marked `featured` gets the FRONT wall (the one you face on entering).
+// Every other project gets a bay on the left or right wall, alternating, two bays per row.
+// All of it is computed from data/projects.ts, so adding a project needs no layout edits.
 export const PROJECTS_W = 18;
 export const PROJECTS_H = 6.2;
-export const BAY_SPACING = 10.5; // length of wall each bay uses
+export const BAY_SPACING = 10.5; // length of side wall each bay uses
 const ENTRY = 8; // empty space by the entrance
 const END = 6; // empty space behind the last bay
 
-const projectRows = Math.ceil(PROJECTS.length / 2);
-const PROJ_D = Math.max(26, ENTRY + projectRows * BAY_SPACING + END);
+const featuredProject = PROJECTS.find((p) => p.featured);
+const regularProjects = PROJECTS.filter((p) => p !== featuredProject);
+
+const projectRows = Math.ceil(regularProjects.length / 2);
+const PROJ_D = Math.max(30, ENTRY + projectRows * BAY_SPACING + END);
 const PROJ_FIRST_Z = PROJ_D / 2 - ENTRY - BAY_SPACING / 2;
 
 export interface ProjectSlot {
   project: Project;
-  side: -1 | 1; // -1 = left wall, 1 = right wall
-  bayZ: number; // centre of the bay along the room
-  wallX: number; // x of the wall the bay is on
-  plinthX: number; // x of the hologram pedestal in front of it
+  wall: "left" | "right" | "front";
+  /** Centre of the display wall: a z for the side walls, an x for the front wall. */
+  along: number;
+  /** Where the hologram pedestal stands. */
+  plinthX: number;
+  plinthZ: number;
+  featured: boolean;
 }
 
-export const projectSlots: ProjectSlot[] = PROJECTS.map((project, i) => {
+/** Side-wall bays (every project except the featured one). */
+export const projectSlots: ProjectSlot[] = regularProjects.map((project, i) => {
   const side: -1 | 1 = i % 2 === 0 ? -1 : 1;
+  const z = PROJ_FIRST_Z - Math.floor(i / 2) * BAY_SPACING;
   return {
     project,
-    side,
-    bayZ: PROJ_FIRST_Z - Math.floor(i / 2) * BAY_SPACING,
-    wallX: side * (PROJECTS_W / 2),
+    wall: side < 0 ? "left" : "right",
+    along: z,
     plinthX: side * (PROJECTS_W / 2 - 3.4),
+    plinthZ: z,
+    featured: false,
   };
 });
+
+/** The featured project on the front wall, with its hologram on the right-hand side. */
+export const featuredSlot: ProjectSlot | null = featuredProject
+  ? {
+      project: featuredProject,
+      wall: "front",
+      along: 0,
+      plinthX: 6.9,
+      plinthZ: -PROJ_D / 2 + 3.4,
+      featured: true,
+    }
+  : null;
+
+const allSlots = featuredSlot ? [featuredSlot, ...projectSlots] : projectSlots;
 
 export const PROJECTS_ROOM: RoomLayout = {
   width: PROJECTS_W,
   depth: PROJ_D,
   height: PROJECTS_H,
   spawn: { x: 0, z: PROJ_D / 2 - 2.5 },
-  colliders: projectSlots.map((s) => ({
+  colliders: allSlots.map((s) => ({
     cx: s.plinthX,
-    cz: s.bayZ,
+    cz: s.plinthZ,
     hw: 0.85,
     hd: 0.85,
   })),
@@ -125,36 +149,4 @@ export const PROJECTS_ROOM: RoomLayout = {
 export const ROOM_LAYOUTS: Record<RoomId, RoomLayout> = {
   office: OFFICE,
   projects: PROJECTS_ROOM,
-};
-
-// ======================= PLACEHOLDER ROOM =======================
-// Used by <EmptyRoom /> for any destination that has no real furniture yet.
-
-/** Size of the placeholder room. */
-export const EMPTY_ROOM = { width: 20, depth: 20, height: 5.5 } as const;
-
-export interface RoomTheme {
-  wall: string;
-  accent: string;
-  title: string;
-  subtitle: string;
-}
-
-/**
- * Keyed by string so any `Destination` value type-checks.
- * Placeholder colours/text: swap in your original values.
- */
-export const ROOM_THEMES: Record<string, RoomTheme> = {
-  office: {
-    wall: "#d9d2c3",
-    accent: "#e0a64a",
-    title: "OFFICE",
-    subtitle: "Skills & experience",
-  },
-  projects: {
-    wall: "#cfd3dc",
-    accent: "#4aa8e0",
-    title: "PROJECTS",
-    subtitle: "Selected work",
-  },
 };

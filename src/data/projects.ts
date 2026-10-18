@@ -3,6 +3,8 @@ import type { Project } from "./types";
 /**
  * ADD A PROJECT: add one object to this list. The Projects room grows a new bay for it.
  *
+ * featured: true  puts the project on the FRONT wall of the room (the first featured one only).
+ *
  * media: Cloudinary public IDs ("folder/name") or full URLs.
  *  - the FIRST video becomes the big screen (if there is no video, the first image does)
  *  - up to 5 more items show as panels under it; everything is still in the card's gallery
@@ -11,6 +13,89 @@ import type { Project } from "./types";
  * and set your cloud name in constants/cloudinary.ts.
  */
 export const PROJECTS: Project[] = [
+  {
+    id: "portfolio",
+    name: "Bibash Dahal: Interactive 3D Portfolio",
+    label: "Bibash Dahal Portfolio",
+    kind: "Interactive 3D portfolio",
+    tagline: "A walkable 3D world instead of a résumé page",
+    description:
+      "The site you are standing in: a story-driven 3D portfolio where visitors wake up in a reception lobby, are greeted by name, and are guided to an office of skill holograms or this project gallery.",
+    highlights: [
+      "A story-driven experience: a reception lobby, a receptionist who greets each visitor by name, and a guide who walks them to the office or the projects.",
+      "Skill and project holograms, a CV on the office desk, and videos and images streamed from Cloudinary.",
+      "Built with Next.js, React Three Fiber and Three.js, with keyboard and mouse on desktop, touch controls on phones, and a quality switch.",
+    ],
+    tech: [
+      "Next.js",
+      "React Three Fiber",
+      "Three.js",
+      "TypeScript",
+      "Tailwind CSS",
+      "Zustand",
+      "Cloudinary",
+    ],
+    color: "#ffe08a",
+    logo: "/logos/favicon.ico",
+    badge: "BD",
+    featured: true,
+    link: {
+      label: "Visit bibashdahal.com.np",
+      url: "https://bibashdahal.com.np",
+    },
+    media: [
+      {
+        type: "video",
+        src: "https://res.cloudinary.com/urvcfynq/video/upload/v1792305959/Portfolio_1.mp4",
+        caption: "Bibash Dahal Portfolio Walkthrough",
+      },
+      {
+        type: "image",
+        src: "https://res.cloudinary.com/urvcfynq/image/upload/v1792304047/port1.png",
+        caption: "Lobby Entrance",
+      },
+      {
+        type: "image",
+        src: "https://res.cloudinary.com/urvcfynq/image/upload/v1792304047/port2.png",
+        caption: "Lobby Reception",
+      },
+      {
+        type: "image",
+        src: "https://res.cloudinary.com/urvcfynq/image/upload/v1792304047/port3.png",
+        caption: "Lobby Guide",
+      },
+      {
+        type: "image",
+        src: "https://res.cloudinary.com/urvcfynq/image/upload/v1792304047/port4.png",
+        caption: "Lobby Office Door",
+      },
+      {
+        type: "image",
+        src: "https://res.cloudinary.com/urvcfynq/image/upload/v1792304047/port5.png",
+        caption: "Office Entrance",
+      },
+      {
+        type: "image",
+        src: "https://res.cloudinary.com/urvcfynq/image/upload/v1792304047/port6.png",
+        caption: "Office Desk",
+      },
+      {
+        type: "image",
+        src: "https://res.cloudinary.com/urvcfynq/image/upload/v1792304047/port8.png",
+        caption: "Project Room Entrance",
+      },
+      {
+        type: "image",
+        src: "https://res.cloudinary.com/urvcfynq/image/upload/v1792304047/port9.png",
+        caption: "Project Room Bay",
+      },
+      {
+        type: "image",
+        src: "https://res.cloudinary.com/urvcfynq/image/upload/v1792304047/port10.png",
+        caption: "Project Room Portfolio",
+      },
+    ], // add screenshots or a walkthrough video here, like the other projects
+  },
   {
     id: "Artigo Virtual Exhibition",
     name: "Artigo Virtual Exhibition",
@@ -90,7 +175,7 @@ export const PROJECTS: Project[] = [
     logo: "/logos/PlannedIt.png",
     link: {
       label: "View PlannedIT",
-      url: "https://github.com/YOUR_USERNAME/YOUR_REPOSITORY",
+      url: "https://github.com/BibashDahal1/PlannedIt_front_flutter",
     },
     media: [
       {
