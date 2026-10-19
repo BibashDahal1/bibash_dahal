@@ -1,9 +1,10 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { Gender, useGameStore } from "@/store/useGameStore";
 import { unlockSpeech } from "@/hooks/useSpeech";
 import { startAudio } from "@/lib/audio";
+import { saveVisitor } from "@/lib/visitors";
+import { Gender, useGameStore } from "@/store/useGameStore";
 
 const GENDERS: { value: Gender; label: string }[] = [
   { value: "male", label: "Male" },
@@ -16,25 +17,41 @@ export default function IntroScreen() {
   const startGame = useGameStore((s) => s.startGame);
   const [name, setName] = useState("");
   const [gender, setGender] = useState<Gender | null>(null);
+  const [isCompany, setIsCompany] = useState(false);
+  const [company, setCompany] = useState("");
 
   if (phase !== "intro") return null;
 
-  const valid = name.trim().length >= 2 && gender !== null;
+  const valid =
+    name.trim().length >= 2 &&
+    gender !== null &&
+    (!isCompany || company.trim().length >= 2);
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    if (valid && gender) {
-      unlockSpeech();
-      startAudio();
-      startGame(name, gender);
-    }
+    if (!valid || !gender) return;
+
+    // saved in the background: the visitor never waits for it
+    saveVisitor({
+      name: name.trim(),
+      gender,
+      isCompany,
+      company: isCompany ? company.trim() : undefined,
+      device: window.matchMedia("(pointer: coarse)").matches
+        ? "mobile"
+        : "desktop",
+    });
+
+    unlockSpeech();
+    startAudio();
+    startGame(name, gender);
   };
 
   return (
     <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
       <form
         onSubmit={submit}
-        className="w-full max-w-md rounded-2xl border border-[#d4af37]/30 bg-[#0f0d0b]/90 p-6 shadow-2xl sm:p-8"
+        className="max-h-[94dvh] w-full max-w-md overflow-y-auto rounded-2xl border border-[#d4af37]/30 bg-[#0f0d0b]/90 p-6 shadow-2xl sm:p-8"
       >
         <p className="font-display text-xs uppercase tracking-[0.35em] text-[#d4af37]">
           Welcome
@@ -53,7 +70,7 @@ export default function IntroScreen() {
           id="visitor-name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          maxLength={24}
+          maxLength={60}
           autoComplete="given-name"
           placeholder="e.g. Aarav"
           className="mt-2 w-full rounded-lg border border-white/15 bg-black/40 px-4 py-3 text-[#f4ede0] outline-none transition focus:border-[#d4af37]"
@@ -80,6 +97,38 @@ export default function IntroScreen() {
           </div>
         </fieldset>
 
+        {/* company: ticking the box reveals the company name */}
+        <label className="mt-5 flex cursor-pointer items-center gap-3 text-sm text-[#c9bfa6]">
+          <input
+            type="checkbox"
+            checked={isCompany}
+            onChange={(e) => setIsCompany(e.target.checked)}
+            className="h-4 w-4 accent-[#d4af37]"
+          />
+          I&apos;m visiting on behalf of a company
+        </label>
+
+        {isCompany && (
+          <div className="mt-3">
+            <label
+              className="block text-sm text-[#c9bfa6]"
+              htmlFor="visitor-company"
+            >
+              Company name
+            </label>
+            <input
+              id="visitor-company"
+              value={company}
+              onChange={(e) => setCompany(e.target.value)}
+              maxLength={100}
+              autoFocus
+              autoComplete="organization"
+              placeholder="e.g. Acme Technologies"
+              className="mt-2 w-full rounded-lg border border-white/15 bg-black/40 px-4 py-3 text-[#f4ede0] outline-none transition focus:border-[#d4af37]"
+            />
+          </div>
+        )}
+
         <button
           type="submit"
           disabled={!valid}
@@ -87,6 +136,11 @@ export default function IntroScreen() {
         >
           Enter
         </button>
+
+        <p className="mt-4 text-center text-[11px] leading-relaxed text-[#8a7f66]">
+          Your name{isCompany ? " and company" : ""} are saved so I know who
+          visited.
+        </p>
       </form>
     </div>
   );
