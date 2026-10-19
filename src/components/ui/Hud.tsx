@@ -1,29 +1,37 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { useIsTouch } from "@/hooks/useIsTouch";
-import { usePointerLock } from "@/hooks/usePointerLock";
 import { useGameStore } from "@/store/useGameStore";
 
+/** A short "how to move" hint, shown for 10 seconds once the visitor can walk. */
 export default function Hud() {
   const phase = useGameStore((s) => s.phase);
   const isTouch = useIsTouch();
-  const { locked, lock } = usePointerLock();
+  const [shown, setShown] = useState(false);
+  const started = useRef(false);
 
-  const moving = phase === "explore" || phase === "guided";
-  if (!moving || isTouch || locked) return null;
+  useEffect(() => {
+    if (phase === "explore" && !started.current) {
+      started.current = true;
+      setShown(true);
+      window.setTimeout(() => setShown(false), 10000);
+    }
+  }, [phase]);
+
+  if (!shown) return null;
 
   return (
-    <button
-      type="button"
-      onClick={lock}
-      className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 bg-black/50 text-[#f4ede0]"
+    <div
+      className={`pointer-events-none absolute inset-x-0 z-30 flex justify-center px-4 ${
+        isTouch ? "bottom-44" : "bottom-10"
+      }`}
     >
-      <span className="font-display text-lg tracking-wide">
-        Click to look around
-      </span>
-      <span className="text-xs opacity-70">
-        WASD to move · Shift to run · Esc to release the mouse
-      </span>
-    </button>
+      <p className="rounded-full bg-black/45 px-4 py-2 text-center text-xs text-[#f4ede0] backdrop-blur-sm">
+        {isTouch
+          ? "Left thumb to move · right thumb to look · USE to interact"
+          : "WASD to move · mouse to look · Shift to run · E or click to interact · Esc to free the mouse"}
+      </p>
+    </div>
   );
 }

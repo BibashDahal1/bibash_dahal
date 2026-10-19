@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useIsTouch } from "@/hooks/useIsTouch";
+import { relockIfWanted } from "@/lib/mouseLook";
 import { useGameStore } from "@/store/useGameStore";
 
 type OptionId = "meet" | "projects" | "look" | "stroll";
@@ -24,7 +24,6 @@ const OPTIONS: { id: OptionId; title: string; hint: string }[] = [
 export default function MenuOverlay() {
   const phase = useGameStore((s) => s.phase);
   const name = useGameStore((s) => s.name);
-  const isTouch = useIsTouch();
 
   // the mouse is needed for the buttons
   useEffect(() => {
@@ -34,8 +33,7 @@ export default function MenuOverlay() {
   if (phase !== "menu") return null;
 
   const choose = (id: OptionId) => {
-    // a click is a user gesture, so the mouse can be grabbed again immediately
-    if (!isTouch) document.body.requestPointerLock?.();
+    relockIfWanted(); // a click is a user gesture; only re-captures the mouse if mouse look was on
     const s = useGameStore.getState();
 
     if (id === "meet" || id === "projects") {

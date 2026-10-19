@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect } from "react";
-import { useIsTouch } from "@/hooks/useIsTouch";
+import { relockIfWanted } from "@/lib/mouseLook";
 import { useGameStore } from "@/store/useGameStore";
 import MediaViewer from "./MediaViewer";
 import PdfViewer from "./PdfViewer";
@@ -11,12 +11,11 @@ import SkillDetail from "./SkillDetail";
 /** Skill / project card, the media viewer, or the CV viewer. Pauses the world while open. */
 export default function DetailOverlay() {
   const detail = useGameStore((s) => s.detail);
-  const isTouch = useIsTouch();
 
   const close = useCallback(() => {
     useGameStore.getState().closeDetail();
-    if (!isTouch) document.body.requestPointerLock?.(); // the click is a user gesture, so this works
-  }, [isTouch]);
+    relockIfWanted(); // only re-captures the mouse if mouse look was on
+  }, []);
 
   useEffect(() => {
     if (!detail) return;

@@ -5,6 +5,8 @@ import { useEffect } from "react";
 import { useIsTouch } from "@/hooks/useIsTouch";
 import { useGameStore } from "@/store/useGameStore";
 import AudioController from "@/components/ui/AudioController";
+import ControlPad from "@/components/ui/ControlPad";
+import DesktopMouseLook from "@/components/ui/DesktopMouseLook";
 import DetailOverlay from "@/components/ui/DetailOverlay";
 import FadeOverlay from "@/components/ui/FadeOverlay";
 import Hud from "@/components/ui/Hud";
@@ -14,7 +16,6 @@ import LoadingScreen from "@/components/ui/LoadingScreen";
 import MenuOverlay from "@/components/ui/MenuOverlay";
 import RoomHud from "@/components/ui/RoomHud";
 import SettingsBar from "@/components/ui/SettingsBar";
-import TouchControls from "@/components/ui/TouchControls";
 import WakeOverlay from "@/components/ui/WakeOverlay";
 
 const Experience = dynamic(() => import("@/components/canvas/Experience"), {
@@ -40,7 +41,9 @@ export default function GameShell() {
       <AudioController />
       <WakeOverlay />
       <Hud />
-      {canMove && isTouch && <TouchControls />}
+      {/* touch devices: on-screen controller. desktop: mouse look + keyboard */}
+      {canMove && isTouch && <ControlPad />}
+      {canMove && !isTouch && <DesktopMouseLook />}
       <InteractPrompt />
       <RoomHud />
       <SettingsBar />

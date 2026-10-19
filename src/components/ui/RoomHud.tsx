@@ -16,7 +16,7 @@ export default function RoomHud() {
   const isTouch = useIsTouch();
   const active = scene !== "lobby" && phase === "explore";
 
-  // B = back to lobby (the mouse is captured on desktop, so the button isn't clickable)
+  // B = back to lobby (also handy while mouse look has the cursor captured)
   useEffect(() => {
     if (!active) return;
     const onKey = (e: KeyboardEvent) => {
@@ -40,9 +40,7 @@ export default function RoomHud() {
       <div className="pointer-events-none absolute inset-x-0 top-16 z-30 flex justify-center px-4 sm:top-4 sm:px-40">
         <span className="rounded-full bg-black/55 px-4 py-1.5 text-center text-[11px] text-[#e8dfc9] backdrop-blur-sm">
           {HINTS[scene as Destination]} ·{" "}
-          {isTouch
-            ? "tap the button to open"
-            : "click or press E to open · B to go back"}
+          {isTouch ? "tap USE to open" : "press E to open · B to go back"}
         </span>
       </div>
     </>

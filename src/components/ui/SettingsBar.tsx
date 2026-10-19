@@ -6,7 +6,7 @@ import { useGameStore } from "@/store/useGameStore";
 const BTN =
   "rounded-lg border border-white/25 bg-black/60 px-3 py-2 text-xs text-[#f4ede0] backdrop-blur-sm transition hover:border-[#d4af37]";
 
-/** Sound + graphics switches. M and G work even while the mouse is captured. */
+/** Sound and graphics switches. M and G work even while the mouse is captured. */
 export default function SettingsBar() {
   const phase = useGameStore((s) => s.phase);
   const muted = useGameStore((s) => s.muted);

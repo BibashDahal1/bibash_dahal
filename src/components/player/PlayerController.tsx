@@ -3,7 +3,6 @@
 import { useEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
-import { footstep } from "@/lib/audio";
 
 import {
   EYE_HEIGHT,
@@ -15,6 +14,7 @@ import {
   WAKE_DURATION,
 } from "@/constants/world";
 import { useDesktopInput } from "@/hooks/useDesktopInput";
+import { footstep } from "@/lib/audio";
 import { isBlocked } from "@/lib/collision";
 import { input } from "@/lib/input";
 import { playerPos } from "@/lib/player";
@@ -22,6 +22,8 @@ import { useGameStore } from "@/store/useGameStore";
 
 const { clamp, lerp, damp } = THREE.MathUtils;
 const LYING_PITCH = 1.25;
+const STEP_LENGTH = 0.8; // metres between footsteps
+const KEY_TURN = 1.8; // radians per second when looking with the arrow keys
 
 export default function PlayerController() {
   const camera = useThree((s) => s.camera);
@@ -60,19 +62,22 @@ export default function PlayerController() {
       input.look.dx = input.look.dy = 0;
       if (wakeTime.current >= WAKE_DURATION) setPhase("explore");
     } else if (phase === "explore" || phase === "guided") {
-      // look
-      p.yaw -= input.look.dx * LOOK_SENSITIVITY;
-      p.pitch = clamp(p.pitch - input.look.dy * LOOK_SENSITIVITY, -1.4, 1.4);
+      const k = input.keys;
+
+      // look: mouse-look / touch delta + arrow keys
+      const turn = (k.has("ArrowRight") ? 1 : 0) - (k.has("ArrowLeft") ? 1 : 0);
+      const tilt = (k.has("ArrowUp") ? 1 : 0) - (k.has("ArrowDown") ? 1 : 0);
+      p.yaw -= input.look.dx * LOOK_SENSITIVITY + turn * KEY_TURN * dt;
+      p.pitch = clamp(
+        p.pitch - input.look.dy * LOOK_SENSITIVITY + tilt * KEY_TURN * dt,
+        -1.4,
+        1.4,
+      );
       input.look.dx = input.look.dy = 0;
 
-      // move
-      const k = input.keys;
-      let mx =
-        (k.has("KeyD") || k.has("ArrowRight") ? 1 : 0) -
-        (k.has("KeyA") || k.has("ArrowLeft") ? 1 : 0);
-      let my =
-        (k.has("KeyW") || k.has("ArrowUp") ? 1 : 0) -
-        (k.has("KeyS") || k.has("ArrowDown") ? 1 : 0);
+      // move: WASD on desktop + the analog joystick on touch devices
+      let mx = (k.has("KeyD") ? 1 : 0) - (k.has("KeyA") ? 1 : 0);
+      let my = (k.has("KeyW") ? 1 : 0) - (k.has("KeyS") ? 1 : 0);
       mx += input.move.x;
       my += input.move.y;
       const len = Math.hypot(mx, my);
@@ -80,9 +85,8 @@ export default function PlayerController() {
         mx /= len;
         my /= len;
       }
-      speed =
-        MOVE_SPEED *
-        (k.has("ShiftLeft") || k.has("ShiftRight") ? RUN_MULTIPLIER : 1);
+      const running = input.run || k.has("ShiftLeft") || k.has("ShiftRight");
+      speed = MOVE_SPEED * (running ? RUN_MULTIPLIER : 1);
 
       const sin = Math.sin(p.yaw);
       const cos = Math.cos(p.yaw);
@@ -90,15 +94,17 @@ export default function PlayerController() {
       const dz = (-cos * my - sin * mx) * speed * dt;
       if (!isBlocked(p.x + dx, p.z, scene)) p.x += dx;
       if (!isBlocked(p.x, p.z + dz, scene)) p.z += dz;
-      moving = len > 0.05;
+      moving = Math.min(len, 1) > 0.05;
+
+      // footsteps follow the distance actually walked, so a gentle push gives slow steps
       if (moving) {
-        stepDist.current += speed * dt;
-        if (stepDist.current >= 0.8) {
-          stepDist.current -= 0.8;
-          footstep(speed > MOVE_SPEED);
+        stepDist.current += speed * Math.min(len, 1) * dt;
+        if (stepDist.current >= STEP_LENGTH) {
+          stepDist.current -= STEP_LENGTH;
+          footstep(running);
         }
       } else {
-        stepDist.current = 0.5; // the first step lands quickly after you start walking
+        stepDist.current = STEP_LENGTH * 0.6; // the first step lands quickly after you start walking
       }
     } else if (phase === "greeting" || phase === "menu") {
       // ease the view onto the receptionist's face; movement is paused
@@ -117,7 +123,7 @@ export default function PlayerController() {
       p.pitch = damp(p.pitch, targetPitch, 4, dt);
       input.look.dx = input.look.dy = 0;
     }
-    // "transition": frozen
+    // "transition" and "viewing": frozen
 
     bobAmp.current = damp(bobAmp.current, moving ? 1 : 0, 8, dt);
     if (moving) bobPhase.current += dt * speed * 2.2;
