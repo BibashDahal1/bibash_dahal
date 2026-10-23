@@ -1,13 +1,22 @@
 import { create } from "zustand";
-import type { DetailContent } from "@/data/types";
 import type { Quality } from "@/constants/quality";
+import type { DetailContent } from "@/data/types";
 
 export type Gender = "male" | "female" | "other";
-export type Destination = "office" | "projects";
+export type Destination = "office" | "projects" | "certificates";
 export type Scene = "lobby" | Destination;
 export type Speaker = "receptionist" | "guide";
 
-/** ...as before, plus "viewing": a detail card / PDF is open and the world is paused. */
+/**
+ * intro      name/gender form
+ * waking     eyelids opening, receptionist calling
+ * explore    free movement (in any scene)
+ * greeting   arrived at desk, receptionist speaks, camera turns to her
+ * menu       purpose menu on screen
+ * guided     guide sequence running (movement still allowed: the visitor follows)
+ * transition fading between scenes
+ * viewing    a detail card / viewer is open and the world is paused
+ */
 export type Phase =
   | "intro"
   | "waking"
@@ -38,10 +47,6 @@ type GameState = {
   muted: boolean;
   sceneReady: boolean;
 
-  setQuality: (q: Quality) => void;
-  toggleMuted: () => void;
-  setSceneReady: (ready: boolean) => void;
-
   startGame: (name: string, gender: Gender) => void;
   setPhase: (phase: Phase) => void;
   setScene: (scene: Scene) => void;
@@ -55,6 +60,9 @@ type GameState = {
   setHover: (hover: Hover) => void;
   openDetail: (detail: DetailContent) => void;
   closeDetail: () => void;
+  setQuality: (q: Quality) => void;
+  toggleMuted: () => void;
+  setSceneReady: (ready: boolean) => void;
 };
 
 export const useGameStore = create<GameState>((set) => ({
@@ -74,9 +82,6 @@ export const useGameStore = create<GameState>((set) => ({
   quality: "high",
   muted: false,
   sceneReady: false,
-  setQuality: (quality) => set({ quality }),
-  toggleMuted: () => set((s) => ({ muted: !s.muted })),
-  setSceneReady: (sceneReady) => set({ sceneReady }),
 
   startGame: (name, gender) =>
     set({ name: name.trim(), gender, phase: "waking" }),
@@ -98,4 +103,7 @@ export const useGameStore = create<GameState>((set) => ({
         ? { detail: null, phase: "explore" }
         : { detail: null },
     ),
+  setQuality: (quality) => set({ quality }),
+  toggleMuted: () => set((s) => ({ muted: !s.muted })),
+  setSceneReady: (sceneReady) => set({ sceneReady }),
 }));

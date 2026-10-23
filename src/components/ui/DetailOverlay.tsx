@@ -3,12 +3,13 @@
 import { useCallback, useEffect } from "react";
 import { relockIfWanted } from "@/lib/mouseLook";
 import { useGameStore } from "@/store/useGameStore";
+import CertificateViewer from "./CertificateViewer";
 import MediaViewer from "./MediaViewer";
 import PdfViewer from "./PdfViewer";
 import ProjectDetail from "./ProjectDetail";
 import SkillDetail from "./SkillDetail";
 
-/** Skill / project card, the media viewer, or the CV viewer. Pauses the world while open. */
+/** Skill / project card, the media or certificate viewer, or the CV viewer. Pauses the world while open. */
 export default function DetailOverlay() {
   const detail = useGameStore((s) => s.detail);
 
@@ -39,6 +40,8 @@ export default function DetailOverlay() {
       />
     );
   }
+  if (detail.kind === "certificate")
+    return <CertificateViewer startIndex={detail.index} onClose={close} />;
 
   return (
     <div

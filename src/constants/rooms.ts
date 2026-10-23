@@ -1,9 +1,10 @@
+import { CERTIFICATES } from "@/data/certificates";
 import { PROJECTS } from "@/data/projects";
 import { SKILLS } from "@/data/skills";
-import type { Project, Skill } from "@/data/types";
+import type { Certificate, Project, Skill } from "@/data/types";
 import type { Rect } from "./lobbyLayout";
 
-export type RoomId = "office" | "projects";
+export type RoomId = "office" | "projects" | "certificates";
 export type PlantVariant = "bush" | "tall" | "snake";
 
 export interface RoomLayout {
@@ -131,14 +132,16 @@ export const featuredSlot: ProjectSlot | null = featuredProject
     }
   : null;
 
-const allSlots = featuredSlot ? [featuredSlot, ...projectSlots] : projectSlots;
+const allProjectSlots = featuredSlot
+  ? [featuredSlot, ...projectSlots]
+  : projectSlots;
 
 export const PROJECTS_ROOM: RoomLayout = {
   width: PROJECTS_W,
   depth: PROJ_D,
   height: PROJECTS_H,
   spawn: { x: 0, z: PROJ_D / 2 - 2.5 },
-  colliders: allSlots.map((s) => ({
+  colliders: allProjectSlots.map((s) => ({
     cx: s.plinthX,
     cz: s.plinthZ,
     hw: 0.85,
@@ -146,39 +149,69 @@ export const PROJECTS_ROOM: RoomLayout = {
   })),
 };
 
+// ========================== CERTIFICATES ==========================
+// A gallery: one glass frame per certificate on the side walls (alternating), a bench in front of each row,
+// and a trophy under a glass dome at the far end. Computed from data/certificates.ts.
+export const CERT_W = 16;
+export const CERT_H = 5.8;
+export const CERT_SPACING = 4.4; // wall length each frame uses
+
+const certRows = Math.ceil(CERTIFICATES.length / 2);
+const CERT_D = Math.max(30, 8 + certRows * CERT_SPACING + 10);
+const CERT_FIRST_Z = CERT_D / 2 - 8 - CERT_SPACING / 2;
+
+export interface CertificateSlot {
+  certificate: Certificate;
+  index: number;
+  side: -1 | 1; // -1 = left wall, 1 = right wall
+  z: number;
+}
+
+export const certificateSlots: CertificateSlot[] = CERTIFICATES.map(
+  (certificate, index) => ({
+    certificate,
+    index,
+    side: index % 2 === 0 ? -1 : 1,
+    z: CERT_FIRST_Z - Math.floor(index / 2) * CERT_SPACING,
+  }),
+);
+
+/** z of each viewing bench (one per row of frames). */
+export const certificateBenches: number[] = Array.from(
+  { length: certRows },
+  (_, r) => CERT_FIRST_Z - r * CERT_SPACING,
+);
+
+export const SHOWPIECE = { x: 0, z: -CERT_D / 2 + 5.5 } as const;
+
+export const certificatePlants: PlantSlot[] = (
+  [
+    [-1, -1],
+    [1, -1],
+    [-1, 1],
+    [1, 1],
+  ] as const
+).map(([sx, sz], i) => ({
+  x: sx * 7,
+  z: sz * (CERT_D / 2 - 1.3),
+  variant: VARIANTS[i % VARIANTS.length],
+  scale: 1.3,
+}));
+
+export const CERTIFICATES_ROOM: RoomLayout = {
+  width: CERT_W,
+  depth: CERT_D,
+  height: CERT_H,
+  spawn: { x: 0, z: CERT_D / 2 - 2.5 },
+  colliders: [
+    ...certificateBenches.map((z) => ({ cx: 0, cz: z, hw: 0.35, hd: 1.2 })),
+    { cx: SHOWPIECE.x, cz: SHOWPIECE.z, hw: 0.8, hd: 0.8 },
+    ...certificatePlants.map((p) => ({ cx: p.x, cz: p.z, hw: 0.35, hd: 0.35 })),
+  ],
+};
+
 export const ROOM_LAYOUTS: Record<RoomId, RoomLayout> = {
   office: OFFICE,
   projects: PROJECTS_ROOM,
-};
-
-// ======================= PLACEHOLDER ROOM =======================
-// Used by <EmptyRoom /> for any destination that has no real furniture yet.
-
-/** Size of the placeholder room. */
-export const EMPTY_ROOM = { width: 20, depth: 20, height: 5.5 } as const;
-
-export interface RoomTheme {
-  wall: string;
-  accent: string;
-  title: string;
-  subtitle: string;
-}
-
-/**
- * Keyed by string so any `Destination` value type-checks.
- * Placeholder colours/text: swap in your original values.
- */
-export const ROOM_THEMES: Record<string, RoomTheme> = {
-  office: {
-    wall: "#d9d2c3",
-    accent: "#e0a64a",
-    title: "OFFICE",
-    subtitle: "Skills & experience",
-  },
-  projects: {
-    wall: "#cfd3dc",
-    accent: "#4aa8e0",
-    title: "PROJECTS",
-    subtitle: "Selected work",
-  },
+  certificates: CERTIFICATES_ROOM,
 };

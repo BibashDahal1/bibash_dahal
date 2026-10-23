@@ -7,26 +7,34 @@ import { PerformanceMonitor } from "@react-three/drei";
 import PlayerController from "@/components/player/PlayerController";
 import InteractionRaycaster from "@/components/world/interaction/InteractionRaycaster";
 import Lobby from "@/components/world/lobby/Lobby";
+import CertificatesRoom from "@/components/world/rooms/CertificatesRoom";
 import OfficeRoom from "@/components/world/rooms/OfficeRoom";
 import ProjectsRoom from "@/components/world/rooms/ProjectsRoom";
 import { QUALITY } from "@/constants/quality";
 import { LYING_HEIGHT, SPAWN } from "@/constants/world";
-import { useGameStore } from "@/store/useGameStore";
+import { useGameStore, type Scene } from "@/store/useGameStore";
 import ReadySignal from "./ReadySignal";
+
+// background and fog colour for each place
+const BACKGROUND: Record<Scene, string> = {
+  lobby: "#241716",
+  office: "#241716",
+  projects: "#050810",
+  certificates: "#1a0f14",
+};
 
 export default function Experience() {
   const scene = useGameStore((s) => s.scene);
   const quality = useGameStore((s) => s.quality);
   const q = QUALITY[quality];
   const inLobby = scene === "lobby";
-
-  // warm dusk in the lobby and office, deep blue in the Projects room
-  const bg = scene === "projects" ? "#050810" : "#241716";
+  const bg = BACKGROUND[scene];
 
   return (
     <Canvas
+      dpr={[1, 1.5]}
+      gl={{ powerPreference: "high-performance" }}
       key={quality} // antialiasing can't change on a live canvas, so a quality switch rebuilds it
-      dpr={q.dpr}
       camera={{
         fov: 68,
         near: 0.1,
@@ -43,6 +51,7 @@ export default function Experience() {
         {scene === "lobby" && <Lobby />}
         {scene === "office" && <OfficeRoom />}
         {scene === "projects" && <ProjectsRoom />}
+        {scene === "certificates" && <CertificatesRoom />}
         <ReadySignal />
       </Suspense>
 

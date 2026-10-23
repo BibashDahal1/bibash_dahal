@@ -4,6 +4,7 @@ import { useEffect } from "react";
 
 import {
   BACK_WALL_Z,
+  DOORS,
   DOOR_STAND_Z,
   DOOR_TRIGGER,
   doorX,
@@ -27,6 +28,28 @@ import {
 
 const ABORT = Symbol("abort");
 
+/** What is said for each destination. Edit the words here. */
+const SCRIPT: Record<
+  Destination,
+  { call: (name: string) => string; where: string }
+> = {
+  office: {
+    call: (n) =>
+      `Hello? Could you come to reception, please? ${n} is here to meet Mr. Dahal.`,
+    where: "the office",
+  },
+  projects: {
+    call: (n) =>
+      `Hello? Could you come to reception, please? ${n} would like to see the projects.`,
+    where: "the project gallery",
+  },
+  certificates: {
+    call: (n) =>
+      `Hello? Could you come to reception, please? ${n} would like to see the certificates.`,
+    where: "the certificate gallery",
+  },
+};
+
 export default function GuideDirector() {
   const phase = useGameStore((s) => s.phase);
   const destination = useGameStore((s) => s.destination);
@@ -39,7 +62,8 @@ export default function GuideDirector() {
     const store = useGameStore.getState();
     const name = store.name;
     const x = doorX(dest);
-    const side = dest === "office" ? -1 : 1; // which way the guide steps aside at the door
+    const side = DOORS[dest].aside; // which way the guide steps aside at the door
+    const script = SCRIPT[dest];
     let cancelled = false;
 
     // --- helpers -------------------------------------------------------
@@ -93,12 +117,7 @@ export default function GuideDirector() {
           "receptionist",
           `Of course, ${name}. One moment while I call someone to take you there.`,
         );
-        await say(
-          "receptionist",
-          dest === "office"
-            ? `Hello? Could you come to reception, please? ${name} is here to meet Mr. Dahal.`
-            : `Hello? Could you come to reception, please? ${name} would like to see the projects.`,
-        );
+        await say("receptionist", script.call(name));
         store.setReceptionistPose("sit");
 
         // 2. The door opens, the guide steps out, the door closes behind him
@@ -123,7 +142,7 @@ export default function GuideDirector() {
         guideFace(playerPos.x, playerPos.z);
         await say(
           "guide",
-          `Hello ${name}! I'm here to take you to ${dest === "office" ? "the office" : "the project gallery"}. Please follow me.`,
+          `Hello ${name}! I'm here to take you to ${script.where}. Please follow me.`,
         );
 
         // 4. Lead the way, waiting for the visitor whenever they fall behind

@@ -1,19 +1,18 @@
 "use client";
 
 import { useEffect } from "react";
-import { useIsTouch } from "@/hooks/useIsTouch";
 import { returnToLobby } from "@/lib/transitions";
 import { useGameStore, type Destination } from "@/store/useGameStore";
 
 const HINTS: Record<Destination, string> = {
   office: "Aim at a skill hologram, the CV folder on the desk, or the chair",
   projects: "Aim at a project's screen, a picture or its hologram",
+  certificates: "Aim at a framed certificate to read it",
 };
 
 export default function RoomHud() {
   const scene = useGameStore((s) => s.scene);
   const phase = useGameStore((s) => s.phase);
-  const isTouch = useIsTouch();
   const active = scene !== "lobby" && phase === "explore";
 
   // B = back to lobby (also handy while mouse look has the cursor captured)
@@ -39,8 +38,7 @@ export default function RoomHud() {
       </button>
       <div className="pointer-events-none absolute inset-x-0 top-16 z-30 flex justify-center px-4 sm:top-4 sm:px-40">
         <span className="rounded-full bg-black/55 px-4 py-1.5 text-center text-[11px] text-[#e8dfc9] backdrop-blur-sm">
-          {HINTS[scene as Destination]} ·{" "}
-          {isTouch ? "tap USE to open" : "press E to open · B to go back"}
+          {HINTS[scene as Destination]} · press USE or E to open · B to go back
         </span>
       </div>
     </>

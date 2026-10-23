@@ -48,6 +48,20 @@ export interface Project {
   media?: ProjectMedia[];
 }
 
+export interface Certificate {
+  id: string;
+  title: string;
+  issuer: string;
+  date: string;
+  /** Cloudinary public ID or URL of a picture of the certificate. Leave out for a generated card. */
+  image?: string;
+  description?: string;
+  /** A "verify this certificate" link. */
+  credentialUrl?: string;
+  /** Accent colour for the frame glow. */
+  color?: string;
+}
+
 export interface DocFile {
   id: string;
   label: string; // printed on the folder
@@ -60,4 +74,5 @@ export type DetailContent =
   | { kind: "skill"; skill: Skill }
   | { kind: "project"; project: Project }
   | { kind: "media"; project: Project; index: number }
+  | { kind: "certificate"; index: number }
   | { kind: "doc"; file: DocFile };
