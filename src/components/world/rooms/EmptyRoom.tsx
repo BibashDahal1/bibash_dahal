@@ -3,14 +3,34 @@
 import { useEffect, useMemo } from "react";
 import { Text } from "@react-three/drei";
 
-import { EMPTY_ROOM, ROOM_THEMES } from "@/constants/rooms";
+import { ROOM_LAYOUTS, type RoomId } from "@/constants/rooms";
 import { createFloorTexture } from "@/lib/textures";
 import type { Destination } from "@/store/useGameStore";
+export const ROOM_THEMES = {
+  office: {
+    wall: "#d9cfbd",
+    accent: "#e8b83e",
+    title: "OFFICE",
+    subtitle: "Skills & experience",
+  },
+  projects: {
+    wall: "#cfd6df",
+    accent: "#5eeaff",
+    title: "PROJECTS",
+    subtitle: "Selected work",
+  },
+  certificates: {
+    wall: "#d8d0c8",
+    accent: "#e8b83e",
+    title: "CERTIFICATES",
+    subtitle: "Learning & awards",
+  },
+} as const;
 
 /** Placeholder room: walls, floor, lights and a title. Real furniture comes later. */
-export default function EmptyRoom({ dest }: { dest: Destination }) {
+export default function EmptyRoom({ dest }: { dest: RoomId }) {
   const theme = ROOM_THEMES[dest];
-  const { width: W, depth: D, height: H } = EMPTY_ROOM;
+  const { width: W, depth: D, height: H } = ROOM_LAYOUTS[dest];
 
   const floor = useMemo(() => createFloorTexture(W / 4, D / 4), [W, D]);
   useEffect(() => () => floor.dispose(), [floor]);

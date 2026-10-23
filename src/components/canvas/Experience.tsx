@@ -33,7 +33,6 @@ export default function Experience() {
   return (
     <Canvas
       dpr={[1, 1.5]}
-      gl={{ powerPreference: "high-performance" }}
       key={quality} // antialiasing can't change on a live canvas, so a quality switch rebuilds it
       camera={{
         fov: 68,
