@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
+import { ARCADE_WHERE } from "@/constants/arcade";
 import { relockIfWanted } from "@/lib/mouseLook";
 import { useGameStore } from "@/store/useGameStore";
 
-type OptionId = "meet" | "projects" | "certs" | "look" | "stroll";
+type OptionId = "meet" | "projects" | "certs" | "look";
 
 const OPTIONS: { id: OptionId; title: string; hint: string }[] = [
   {
@@ -22,8 +23,11 @@ const OPTIONS: { id: OptionId; title: string; hint: string }[] = [
     title: "See his certificates",
     hint: "Credentials and achievements",
   },
-  { id: "look", title: "Look around the lobby", hint: "Take your time" },
-  { id: "stroll", title: "Just stroll", hint: "No agenda, just wandering" },
+  {
+    id: "look",
+    title: "Look around the lobby",
+    hint: "Lounges, art and a snake arcade",
+  },
 ];
 
 export default function MenuOverlay() {
@@ -52,9 +56,7 @@ export default function MenuOverlay() {
       s.setPhase("guided");
     } else {
       s.setReply(
-        id === "look"
-          ? `Of course, ${name}. Take your time. The lounges and the art on the walls are worth a look, and I'm right here if you need anything.`
-          : `Enjoy your stroll, ${name}. The doors on the back wall lead to the Office, the Certificates and the Projects, whenever you're ready.`,
+        `Of course, ${name}. Take your time. The lounges and the art on the walls are worth a look. You can also play our Snake arcade game, ${ARCADE_WHERE}. Walk up, press USE, and your best scores go on the top-10 board.`,
       );
       s.setPhase("explore");
     }
@@ -67,16 +69,12 @@ export default function MenuOverlay() {
           How may I help you, {name}?
         </p>
         <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {OPTIONS.map((o, i) => (
+          {OPTIONS.map((o) => (
             <button
               key={o.id}
               type="button"
               onClick={() => choose(o.id)}
-              className={`rounded-lg border border-white/15 px-4 py-3 text-left transition hover:border-[#d4af37] hover:bg-[#d4af37]/10 active:scale-[0.98] ${
-                i === OPTIONS.length - 1 && OPTIONS.length % 2 === 1
-                  ? "sm:col-span-2"
-                  : ""
-              }`}
+              className="rounded-lg border border-white/15 px-4 py-3 text-left transition hover:border-[#d4af37] hover:bg-[#d4af37]/10 active:scale-[0.98]"
             >
               <span className="block text-sm font-semibold text-[#ffe08a]">
                 {o.title}

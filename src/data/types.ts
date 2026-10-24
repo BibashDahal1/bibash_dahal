@@ -75,4 +75,5 @@ export type DetailContent =
   | { kind: "project"; project: Project }
   | { kind: "media"; project: Project; index: number }
   | { kind: "certificate"; index: number }
-  | { kind: "doc"; file: DocFile };
+  | { kind: "doc"; file: DocFile }
+  | { kind: "arcade" };

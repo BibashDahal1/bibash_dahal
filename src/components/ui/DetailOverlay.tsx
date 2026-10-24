@@ -8,8 +8,9 @@ import MediaViewer from "./MediaViewer";
 import PdfViewer from "./PdfViewer";
 import ProjectDetail from "./ProjectDetail";
 import SkillDetail from "./SkillDetail";
+import SnakeArcade from "./SnakeArcade";
 
-/** Skill / project card, the media or certificate viewer, or the CV viewer. Pauses the world while open. */
+/** Skill / project card, the media or certificate viewer, the CV viewer, or the snake arcade. Pauses the world while open. */
 export default function DetailOverlay() {
   const detail = useGameStore((s) => s.detail);
 
@@ -21,6 +22,7 @@ export default function DetailOverlay() {
   useEffect(() => {
     if (!detail) return;
     document.exitPointerLock?.(); // the mouse is needed for the buttons
+    if (detail.kind === "arcade") return; // the arcade handles its own keys (Esc pauses the game)
     const onKey = (e: KeyboardEvent) => {
       if (e.code === "Escape") close();
     };
@@ -29,6 +31,7 @@ export default function DetailOverlay() {
   }, [detail, close]);
 
   if (!detail) return null;
+  if (detail.kind === "arcade") return <SnakeArcade onClose={close} />;
   if (detail.kind === "doc")
     return <PdfViewer file={detail.file} onClose={close} />;
   if (detail.kind === "media") {
