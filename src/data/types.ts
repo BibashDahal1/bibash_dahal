@@ -1,3 +1,5 @@
+import type { ArcadeGameId } from "@/constants/arcade";
+
 export type SkillCategory =
   | "Frontend"
   | "Mobile"
@@ -76,4 +78,4 @@ export type DetailContent =
   | { kind: "media"; project: Project; index: number }
   | { kind: "certificate"; index: number }
   | { kind: "doc"; file: DocFile }
-  | { kind: "arcade" };
+  | { kind: "arcade"; game: ArcadeGameId };

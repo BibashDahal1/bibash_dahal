@@ -6,7 +6,7 @@ import { THEMES } from "@/constants/themes";
 import { BACK_WALL_Z, STAFF_DOOR_X, doorX } from "@/constants/world";
 import { ROOM } from "@/constants/world";
 import { useGameStore } from "@/store/useGameStore";
-import ArcadeCabinet from "./ArcadeCabinet";
+import ArcadeCorner from "./ArcadeCorner";
 import Decor from "./Decor";
 import DeskAccessories from "./DeskAccessories";
 import Door from "./Door";
@@ -35,7 +35,7 @@ export default function Lobby() {
       <GuideDirector />
       <Decor />
       <Crowd />
-      <ArcadeCabinet />
+      <ArcadeCorner />
       <Door
         position={[doorX("office"), 0, BACK_WALL_Z]}
         label="OFFICE"

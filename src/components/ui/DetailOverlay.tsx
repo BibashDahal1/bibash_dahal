@@ -3,14 +3,14 @@
 import { useCallback, useEffect } from "react";
 import { relockIfWanted } from "@/lib/mouseLook";
 import { useGameStore } from "@/store/useGameStore";
+import ArcadeShell from "./ArcadeShell";
 import CertificateViewer from "./CertificateViewer";
 import MediaViewer from "./MediaViewer";
 import PdfViewer from "./PdfViewer";
 import ProjectDetail from "./ProjectDetail";
 import SkillDetail from "./SkillDetail";
-import SnakeArcade from "./SnakeArcade";
 
-/** Skill / project card, the media or certificate viewer, the CV viewer, or the snake arcade. Pauses the world while open. */
+/** Skill / project card, the media or certificate viewer, the CV viewer, or an arcade game. Pauses the world while open. */
 export default function DetailOverlay() {
   const detail = useGameStore((s) => s.detail);
 
@@ -31,7 +31,8 @@ export default function DetailOverlay() {
   }, [detail, close]);
 
   if (!detail) return null;
-  if (detail.kind === "arcade") return <SnakeArcade onClose={close} />;
+  if (detail.kind === "arcade")
+    return <ArcadeShell key={detail.game} game={detail.game} onClose={close} />;
   if (detail.kind === "doc")
     return <PdfViewer file={detail.file} onClose={close} />;
   if (detail.kind === "media") {
