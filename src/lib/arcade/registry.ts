@@ -3,8 +3,8 @@ import { DIFFICULTIES } from "@/lib/snakeEngine";
 import { BLOCKS_DIM, BlocksGame } from "./blocksGame";
 import { BREAKOUT_DIM, BreakoutGame } from "./breakoutGame";
 import { FLAP_DIM, FlapGame } from "./flapGame";
-import { MERGE_DIM, MergeGame } from "./mergeGame";
 import { SNAKE_DIM, SnakeGame } from "./snakeGame";
+import { SUDOKU_DIM, SudokuGame } from "./sudokuGame";
 import type { GameDef } from "./types";
 
 export const GAMES: Record<ArcadeGameId, GameDef> = {
@@ -84,24 +84,35 @@ export const GAMES: Record<ArcadeGameId, GameDef> = {
     touch: [{ label: "FLAP", code: "Space" }],
     create: (m) => new FlapGame(m),
   },
-  merge: {
-    id: "merge",
-    title: ARCADE_META.merge.title,
-    color: ARCADE_META.merge.color,
-    ...MERGE_DIM,
-    help: "Arrows / WASD or swipe",
+  sudoku: {
+    id: "sudoku",
+    title: ARCADE_META.sudoku.title,
+    color: ARCADE_META.sudoku.color,
+    ...SUDOKU_DIM,
+    help: "Click a cell • 1-9 fill • N notes • H hint • arrows move",
     blurbs: {
-      easy: "Roomy 5×5 board.",
-      normal: "Classic 4×4.",
-      hard: "4×4 with more 4-tiles.",
-      insane: "Cramped 3×3 board.",
+      easy: "42 clues. 5 mistakes allowed.",
+      normal: "35 clues. 4 mistakes allowed.",
+      hard: "30 clues. 3 mistakes allowed.",
+      insane: "26 clues. 3 mistakes allowed.",
     },
     touch: [
-      { label: "◀", code: "ArrowLeft" },
-      { label: "▲", code: "ArrowUp" },
-      { label: "▼", code: "ArrowDown" },
-      { label: "▶", code: "ArrowRight" },
+      { label: "1", code: "Digit1" },
+      { label: "2", code: "Digit2" },
+      { label: "3", code: "Digit3" },
+      { label: "4", code: "Digit4" },
+      { label: "5", code: "Digit5" },
+      { label: "6", code: "Digit6" },
+      { label: "7", code: "Digit7" },
+      { label: "8", code: "Digit8" },
+      { label: "9", code: "Digit9" },
+      { label: "⌫", code: "Backspace" },
+      { label: "NOTES", code: "KeyN" },
+      { label: "HINT", code: "KeyH" },
     ],
-    create: (m) => new MergeGame(m),
+    swipe: false,
+    showPad: true,
+    hideOnPause: true,
+    create: (m) => new SudokuGame(m),
   },
 };

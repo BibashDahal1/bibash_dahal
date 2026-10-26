@@ -31,8 +31,10 @@ export interface GameInstance {
   hud(): HudItem[];
   /** KeyboardEvent.code, pressed (true) or released (false). Auto-repeat is filtered out. */
   key(code: string, down: boolean): void;
-  /** pointer position over the screen, 0..1 */
+  /** pointer position over the screen, 0..1 (called while the pointer moves over the screen) */
   pointer?(nx: number, ny: number): void;
+  /** the pointer went down on the screen at this position, 0..1 */
+  press?(nx: number, ny: number): void;
   /** a tap / click on the screen with no swipe */
   tap?(): void;
 }
@@ -52,4 +54,10 @@ export interface GameDef {
   blurbs: Record<Difficulty, string>;
   touch: TouchButton[];
   create(mode: Difficulty): GameInstance;
+  /** false: swiping on the screen does not send arrow keys (default true) */
+  swipe?: boolean;
+  /** true: always show the on-screen buttons, not only on touch devices */
+  showPad?: boolean;
+  /** true: the screen is fully covered while paused (so you can't study the board) */
+  hideOnPause?: boolean;
 }

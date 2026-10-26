@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { PerformanceMonitor } from "@react-three/drei";
 
@@ -30,10 +30,16 @@ export default function Experience() {
   const inLobby = scene === "lobby";
   const bg = BACKGROUND[scene];
 
+  // 0..1: how well the device is keeping up. Render resolution follows it automatically.
+  const [perf, setPerf] = useState(1);
+  const configured = q.dpr as number | [number, number];
+  const maxDpr = typeof configured === "number" ? configured : configured[1];
+  const dpr = maxDpr <= 1 ? maxDpr : 1 + (maxDpr - 1) * perf;
+
   return (
     <Canvas
-      dpr={[1, 1.5]}
       key={quality} // antialiasing can't change on a live canvas, so a quality switch rebuilds it
+      dpr={dpr}
       camera={{
         fov: 68,
         near: 0.1,
@@ -57,9 +63,11 @@ export default function Experience() {
       <PlayerController />
       <InteractionRaycaster />
 
-      {/* if the frame rate really struggles after the experience has started, drop to Low automatically */}
+      {/* first lower the render resolution when the frame rate dips; only after repeated dips drop to Low */}
       <PerformanceMonitor
-        onDecline={() => {
+        flipflops={3}
+        onChange={({ factor }) => setPerf(Math.round(factor * 10) / 10)}
+        onFallback={() => {
           const s = useGameStore.getState();
           if (s.sceneReady && s.phase !== "intro" && s.quality === "high")
             s.setQuality("low");

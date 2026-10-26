@@ -172,45 +172,43 @@ function flap(ctx: CanvasRenderingContext2D, t: number, W: number, H: number) {
   ctx.fillRect(81, by - 1, 6, 3);
 }
 
-// ---- 2048: a board of changing tiles ----
-const TILE_BG: Record<number, string> = {
-  2: "#eee4da",
-  4: "#ede0c8",
-  8: "#f2b179",
-  16: "#f59563",
-  32: "#f67c5f",
-  64: "#f65e3b",
-  128: "#edcf72",
-};
-
-function merge(ctx: CanvasRenderingContext2D, t: number, W: number, H: number) {
-  ctx.fillStyle = "#14110d";
+// ---- sudoku: a grid slowly filling with numbers ----
+function sudoku(
+  ctx: CanvasRenderingContext2D,
+  t: number,
+  W: number,
+  H: number,
+) {
+  ctx.fillStyle = "#0b0d18";
   ctx.fillRect(0, 0, W, H);
-  const n = 4;
-  const size = 38;
-  const gap = 4;
-  const total = n * size + (n - 1) * gap;
-  const ox = Math.floor((W - total) / 2);
-  const oy = Math.floor((H - total) / 2);
-  const tick = Math.floor(t * 1.2);
-  for (let r = 0; r < n; r++) {
-    for (let c = 0; c < n; c++) {
-      const x = ox + c * (size + gap);
-      const y = oy + r * (size + gap);
-      const k = (r * 5 + c * 3 + tick) % 9;
-      if (k > 6) {
-        ctx.fillStyle = "#2b2620";
-        ctx.fillRect(x, y, size, size);
-        continue;
-      }
-      const v = 2 ** (1 + k);
-      ctx.fillStyle = TILE_BG[v] ?? "#3c3a32";
-      ctx.fillRect(x, y, size, size);
-      ctx.fillStyle = v <= 4 ? "#776e65" : "#ffffff";
-      ctx.font = `bold ${v < 100 ? 16 : 13}px monospace`;
-      ctx.textAlign = "center";
-      ctx.fillText(String(v), x + size / 2, y + size / 2 + 5);
+  const C = 12;
+  const ox = Math.floor((W - 9 * C) / 2);
+  const oy = 54;
+  ctx.fillStyle = "#14131c";
+  ctx.fillRect(ox, oy, 9 * C, 9 * C);
+
+  const p = (t / 9) % 1.15;
+  ctx.font = "bold 9px monospace";
+  ctx.textAlign = "center";
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 9; c++) {
+      const order = (((r * 9 + c) * 37) % 81) / 81;
+      if (order >= p) continue;
+      const v = ((r * 3 + Math.floor(r / 3) + c) % 9) + 1;
+      ctx.fillStyle = order < 0.35 ? "#e8ecf5" : "#ff9a4d";
+      ctx.fillText(String(v), ox + c * C + C / 2, oy + r * C + C - 3);
     }
+  }
+  for (let k = 0; k <= 9; k++) {
+    ctx.lineWidth = k % 3 === 0 ? 1.5 : 0.5;
+    ctx.strokeStyle =
+      k % 3 === 0 ? "rgba(255,154,77,0.9)" : "rgba(255,255,255,0.15)";
+    ctx.beginPath();
+    ctx.moveTo(ox + k * C, oy);
+    ctx.lineTo(ox + k * C, oy + 9 * C);
+    ctx.moveTo(ox, oy + k * C);
+    ctx.lineTo(ox + 9 * C, oy + k * C);
+    ctx.stroke();
   }
 }
 
@@ -230,7 +228,7 @@ export function drawAttract(
       return blocks(ctx, t, W, H);
     case "flap":
       return flap(ctx, t, W, H);
-    case "merge":
-      return merge(ctx, t, W, H);
+    case "sudoku":
+      return sudoku(ctx, t, W, H);
   }
 }

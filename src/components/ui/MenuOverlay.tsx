@@ -56,7 +56,7 @@ export default function MenuOverlay() {
       s.setPhase("guided");
     } else {
       s.setReply(
-        `Of course, ${name}. Take your time. The lounges and the art on the walls are worth a look. And there's an arcade corner ${ARCADE_WHERE}: Snake, Brick Breaker, Blocks, Sky Hop and 2048. Walk up to a machine, press USE, and your best scores go on each game's top-10 board.`,
+        `Of course, ${name}. Take your time. The lounges and the art on the walls are worth a look. And there's an arcade corner ${ARCADE_WHERE}: Snake, Brick Breaker, Blocks, Sky Hop and Sudoku. Walk up to a machine, press USE, and your best scores go on each game's top-10 board.`,
       );
       s.setPhase("explore");
     }

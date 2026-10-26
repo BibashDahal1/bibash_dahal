@@ -33,7 +33,7 @@ type RunResult =
   | { status: "error" }
   | ({ status: "done" } & ApiResult);
 
-/** keys that belong to the game while it is running (the page must not scroll on them) */
+/** keys that belong to the game while it is running (the page must not scroll or act on them) */
 const GAME_KEYS = new Set([
   "ArrowUp",
   "ArrowDown",
@@ -47,8 +47,14 @@ const GAME_KEYS = new Set([
   "KeyZ",
   "KeyX",
   "KeyC",
+  "KeyN",
+  "KeyH",
   "ShiftLeft",
   "ShiftRight",
+  "Backspace",
+  "Delete",
+  ...Array.from({ length: 9 }, (_, i) => `Digit${i + 1}`),
+  ...Array.from({ length: 9 }, (_, i) => `Numpad${i + 1}`),
 ]);
 
 async function postScore(
@@ -350,7 +356,7 @@ export default function ArcadeShell({
     return () => cancelAnimationFrame(raf);
   }, [screen, finishRun, syncHud]);
 
-  // pointer: paddle follow, swipe, tap
+  // pointer: press (select), follow (paddle), swipe, tap
   const norm = (ev: React.PointerEvent) => {
     const r = canvasRef.current?.getBoundingClientRect();
     if (!r) return null;
@@ -364,7 +370,10 @@ export default function ArcadeShell({
     swipe.current = { x: ev.clientX, y: ev.clientY };
     ev.currentTarget.setPointerCapture?.(ev.pointerId);
     const p = norm(ev);
-    if (p) instRef.current?.pointer?.(p.nx, p.ny);
+    if (p) {
+      instRef.current?.pointer?.(p.nx, p.ny);
+      instRef.current?.press?.(p.nx, p.ny);
+    }
   };
   const onPointerMove = (ev: React.PointerEvent<HTMLDivElement>) => {
     if (screen !== "playing") return;
@@ -382,6 +391,7 @@ export default function ArcadeShell({
       g.tap?.();
       return;
     }
+    if (def.swipe === false) return;
     const code =
       Math.abs(dx) > Math.abs(dy)
         ? dx > 0
@@ -403,6 +413,10 @@ export default function ArcadeShell({
         { label: "Level", value: 1 },
         { label: "", value: "" },
       ];
+  const showPad =
+    (isTouch || def.showPad) &&
+    def.touch.length > 0 &&
+    (screen === "playing" || screen === "paused");
 
   return (
     <div
@@ -536,7 +550,11 @@ export default function ArcadeShell({
             )}
 
             {screen === "paused" && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/70 p-4 text-center">
+              <div
+                className={`absolute inset-0 flex flex-col items-center justify-center gap-3 p-4 text-center ${
+                  def.hideOnPause ? "bg-[#05080d]" : "bg-black/70"
+                }`}
+              >
                 <p className="text-2xl font-bold uppercase tracking-[0.3em] text-[#ffd23f]">
                   Paused
                 </p>
@@ -627,30 +645,28 @@ export default function ArcadeShell({
             )}
           </div>
 
-          {/* on-screen buttons for touch devices */}
-          {isTouch &&
-            def.touch.length > 0 &&
-            (screen === "playing" || screen === "paused") && (
-              <div className="mt-3 flex flex-wrap justify-center gap-2">
-                {def.touch.map((b) => (
-                  <button
-                    key={b.code + b.label}
-                    type="button"
-                    onPointerDown={(ev) => {
-                      ev.preventDefault();
-                      if (screen === "playing")
-                        instRef.current?.key(b.code, true);
-                    }}
-                    onPointerUp={() => instRef.current?.key(b.code, false)}
-                    onPointerLeave={() => instRef.current?.key(b.code, false)}
-                    onPointerCancel={() => instRef.current?.key(b.code, false)}
-                    className="h-12 min-w-14 rounded-lg border border-[#7dff9a]/40 bg-black/50 px-3 text-sm font-bold text-[#7dff9a] active:bg-[#7dff9a]/20"
-                  >
-                    {b.label}
-                  </button>
-                ))}
-              </div>
-            )}
+          {/* on-screen buttons (touch devices, and always for Sudoku's digit pad) */}
+          {showPad && (
+            <div className="mt-3 flex flex-wrap justify-center gap-2">
+              {def.touch.map((b) => (
+                <button
+                  key={b.code + b.label}
+                  type="button"
+                  onPointerDown={(ev) => {
+                    ev.preventDefault();
+                    if (screen === "playing")
+                      instRef.current?.key(b.code, true);
+                  }}
+                  onPointerUp={() => instRef.current?.key(b.code, false)}
+                  onPointerLeave={() => instRef.current?.key(b.code, false)}
+                  onPointerCancel={() => instRef.current?.key(b.code, false)}
+                  className="h-12 min-w-12 rounded-lg border border-[#7dff9a]/40 bg-black/50 px-3 text-sm font-bold text-[#7dff9a] active:bg-[#7dff9a]/20"
+                >
+                  {b.label}
+                </button>
+              ))}
+            </div>
+          )}
 
           <p className="mt-2 text-center text-[10px] uppercase tracking-widest text-[#6c7d73]">
             {def.help}

@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
-import { Text } from "@react-three/drei";
 import * as THREE from "three";
 
 import {
@@ -16,6 +15,7 @@ import {
 import { playerPos } from "@/lib/player";
 import { useGameStore } from "@/store/useGameStore";
 import ArcadeCabinet from "./ArcadeCabinet";
+import { arcadeRuntime } from "./arcadeRuntime";
 
 /** Dark carpet with scattered neon shapes, the classic arcade look. */
 function createArcadeCarpet(repeatX: number, repeatY: number) {
@@ -65,6 +65,42 @@ function createArcadeCarpet(repeatX: number, repeatY: number) {
   return tex;
 }
 
+/** The neon "ARCADE" sign, drawn once into a texture (glow included), so no 3D text is needed. */
+function createSignTexture() {
+  const c = document.createElement("canvas");
+  c.width = 1024;
+  c.height = 320;
+  const ctx = c.getContext("2d")!;
+  ctx.clearRect(0, 0, 1024, 320);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  ctx.font = "bold 170px monospace";
+  ctx.shadowColor = "#ff2fd0";
+  ctx.shadowBlur = 40;
+  ctx.fillStyle = "#ff7ae8";
+  ctx.fillText("ARCADE", 512, 150);
+  ctx.shadowBlur = 12;
+  ctx.fillStyle = "#ffd6f7";
+  ctx.fillText("ARCADE", 512, 150);
+
+  ctx.font = "bold 52px monospace";
+  ctx.shadowColor = "#ffd23f";
+  ctx.shadowBlur = 18;
+  ctx.fillStyle = "#ffd23f";
+  ctx.fillText("INSERT COIN", 512, 268);
+
+  ctx.shadowColor = "#5eeaff";
+  ctx.shadowBlur = 14;
+  ctx.fillStyle = "#5eeaff";
+  ctx.fillRect(60, 18, 904, 6);
+  ctx.fillRect(60, 300, 904, 6);
+
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
 const RUG_W = 3.2;
 
 /**
@@ -79,9 +115,34 @@ export default function ArcadeCorner() {
     () => createArcadeCarpet(RUG_W / 2, rugLen / 2),
     [rugLen],
   );
+  const sign = useMemo(() => createSignTexture(), []);
   useEffect(() => () => carpet.dispose(), [carpet]);
+  useEffect(() => () => sign.dispose(), [sign]);
 
-  useFrame(() => {
+  // for "is the corner on screen?" (checked a few times a second, not every frame)
+  const frustum = useMemo(() => new THREE.Frustum(), []);
+  const m4 = useMemo(() => new THREE.Matrix4(), []);
+  const sphere = useMemo(
+    () =>
+      new THREE.Sphere(
+        new THREE.Vector3(ARCADE_WALL_X + 0.6, 1.4, ARCADE_CENTER_Z),
+        ARCADE_LENGTH / 2 + 1.6,
+      ),
+    [],
+  );
+
+  useFrame(({ camera }) => {
+    arcadeRuntime.frame++;
+    arcadeRuntime.interval = quality === "high" ? 6 : 10;
+    if (arcadeRuntime.frame % 8 === 0) {
+      m4.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+      frustum.setFromProjectionMatrix(m4);
+      arcadeRuntime.visible = frustum.intersectsSphere(sphere);
+    }
+
+    // collision: only do the work when the visitor is near the row
+    if (playerPos.x > ARCADE_WALL_X + 3 || playerPos.x < ARCADE_WALL_X - 3)
+      return;
     for (const r of ARCADE_COLLIDERS) {
       const hw = r.hw + PLAYER_PAD;
       const hd = r.hd + PLAYER_PAD;
@@ -131,62 +192,20 @@ export default function ArcadeCorner() {
       ))}
 
       {/* neon sign on the wall */}
-      <group
-        position={[ARCADE_WALL_X - 0.4, 3.4, ARCADE_CENTER_Z]}
+      <mesh
+        position={[ARCADE_WALL_X - 0.42, 3.4, ARCADE_CENTER_Z]}
         rotation={[0, Math.PI / 2, 0]}
       >
-        <Text
-          fontSize={0.55}
-          letterSpacing={0.12}
-          color="#ff7ae8"
-          outlineWidth={0.012}
-          outlineColor="#ff2fd0"
-          outlineBlur={0.05}
-          anchorX="center"
-          anchorY="middle"
-        >
-          ARCADE
-        </Text>
-        <Text
-          position={[0, -0.42, 0]}
-          fontSize={0.16}
-          letterSpacing={0.3}
-          color="#ffd23f"
-          anchorX="center"
-          anchorY="middle"
-        >
-          INSERT COIN
-        </Text>
-        <mesh position={[0, 0.5, 0]}>
-          <boxGeometry args={[2.3, 0.02, 0.02]} />
-          <meshBasicMaterial color="#5eeaff" toneMapped={false} />
-        </mesh>
-        <mesh position={[0, -0.64, 0]}>
-          <boxGeometry args={[2.3, 0.02, 0.02]} />
-          <meshBasicMaterial color="#5eeaff" toneMapped={false} />
-        </mesh>
-      </group>
+        <planeGeometry args={[2.6, 0.8125]} />
+        <meshBasicMaterial
+          map={sign}
+          transparent
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
 
-      {quality === "high" && (
-        <>
-          <pointLight
-            position={[rugX, 2.8, ARCADE_CENTER_Z - 1.8]}
-            color="#ff4de1"
-            intensity={10}
-            distance={7}
-            decay={2}
-          />
-          <pointLight
-            position={[rugX, 2.8, ARCADE_CENTER_Z + 1.8]}
-            color="#5eeaff"
-            intensity={10}
-            distance={7}
-            decay={2}
-          />
-        </>
-      )}
-
-      {ARCADE_CABINETS.map((c) => (
+      {ARCADE_CABINETS.map((c, i) => (
         <ArcadeCabinet
           key={c.id}
           id={c.id}
@@ -194,6 +213,7 @@ export default function ArcadeCorner() {
           marquee={c.marquee}
           color={c.color}
           z={c.z}
+          slot={i}
         />
       ))}
     </group>

@@ -2,7 +2,13 @@ import { NextResponse } from "next/server";
 import type { ArcadeGameId } from "@/constants/arcade";
 import { getPlayer, getTop, insertScore } from "@/lib/scoresDb";
 
-const GAMES = new Set<string>(["snake", "breakout", "blocks", "flap", "merge"]);
+const GAMES = new Set<string>([
+  "snake",
+  "breakout",
+  "blocks",
+  "flap",
+  "sudoku",
+]);
 const MODES = new Set(["easy", "normal", "hard", "insane"]);
 
 /** Loose plausibility caps so obviously fake numbers are rejected. */
@@ -14,7 +20,7 @@ const plausible: Record<
   breakout: (s) => s <= 400_000,
   blocks: (s) => s <= 3_000_000,
   flap: (s) => s <= 100_000,
-  merge: (s) => s <= 2_000_000,
+  sudoku: (s, l) => s <= l * 20_000,
 };
 
 // tiny in-memory rate limit: 20 submissions per minute per IP

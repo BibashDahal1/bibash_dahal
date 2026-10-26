@@ -1,6 +1,6 @@
 import type { Rect } from "./lobbyLayout";
 
-export type ArcadeGameId = "snake" | "breakout" | "blocks" | "flap" | "merge";
+export type ArcadeGameId = "snake" | "breakout" | "blocks" | "flap" | "sudoku";
 
 /** Name, marquee text and neon colour of each machine. */
 export const ARCADE_META: Record<
@@ -11,7 +11,7 @@ export const ARCADE_META: Record<
   breakout: { title: "Brick Breaker", marquee: "BRICKS", color: "#ff7ad9" },
   blocks: { title: "Blocks", marquee: "BLOCKS", color: "#5eeaff" },
   flap: { title: "Sky Hop", marquee: "SKY HOP", color: "#ffd23f" },
-  merge: { title: "2048", marquee: "2048", color: "#ff9a4d" },
+  sudoku: { title: "Sudoku", marquee: "SUDOKU", color: "#ff9a4d" },
 };
 
 /** Left-to-right order along the wall (increasing z). Add a game here to add a cabinet. */
@@ -20,7 +20,7 @@ export const ARCADE_ORDER: ArcadeGameId[] = [
   "breakout",
   "blocks",
   "flap",
-  "merge",
+  "sudoku",
 ];
 
 /** The row stands against the LEFT wall (x = -13) and faces +x (into the room). */
