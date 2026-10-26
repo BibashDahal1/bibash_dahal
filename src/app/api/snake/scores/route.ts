@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getPlayer, getTop, insertScore } from "@/lib/scoresDb";
 
+const GAME = "snake" as const;
 const DIFFS = new Set(["easy", "normal", "hard", "insane"]);
 
 // very small in-memory rate limit: 20 submissions per minute per IP
@@ -25,8 +26,8 @@ export async function GET(req: Request) {
   try {
     const name = cleanName(new URL(req.url).searchParams.get("name"));
     const [top, me] = await Promise.all([
-      getTop(10),
-      name ? getPlayer(name) : Promise.resolve({ best: 0, rank: 0 }),
+      getTop(GAME, 10),
+      name ? getPlayer(GAME, name) : Promise.resolve({ best: 0, rank: 0 }),
     ]);
     return NextResponse.json({ top, best: me.best, rank: me.rank });
   } catch (e) {
@@ -66,9 +67,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "invalid" }, { status: 400 });
     }
 
-    const before = await getPlayer(name);
-    await insertScore(name, score, level, difficulty);
-    const [top, after] = await Promise.all([getTop(10), getPlayer(name)]);
+    const before = await getPlayer(GAME, name);
+    await insertScore(GAME, name, score, level, difficulty);
+    const [top, after] = await Promise.all([
+      getTop(GAME, 10),
+      getPlayer(GAME, name),
+    ]);
 
     return NextResponse.json({
       top,
