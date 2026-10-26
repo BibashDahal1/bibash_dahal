@@ -160,7 +160,10 @@ function countSolutions(cells: Int8Array, limit: number): number {
  * A puzzle with exactly one solution. Cells are removed one by one while the solution stays unique,
  * until `target` clues are left or the time budget runs out (then the puzzle just has a few extra clues).
  */
-function makePuzzle(target: number) {
+function makePuzzle(target: number): {
+  solution: Int8Array;
+  puzzle: Int8Array;
+} {
   const solution = randomSolution();
   const puzzle = solution.slice();
   const order = shuffle(Array.from({ length: 81 }, (_, i) => i));
@@ -201,10 +204,10 @@ export class SudokuGame implements GameInstance {
 
   private mult: number;
   private cfg: { clues: number; mistakes: number; par: number };
-  private solution = new Int8Array(81);
-  private values = new Int8Array(81);
+  private solution: Int8Array = new Int8Array(81);
+  private values: Int8Array = new Int8Array(81);
   private given: boolean[] = [];
-  private notes = new Int16Array(81);
+  private notes: Int16Array = new Int16Array(81);
   private sel = 40;
   private notesMode = false;
   private mistakes = 0;
