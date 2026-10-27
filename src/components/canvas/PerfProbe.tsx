@@ -1,14 +1,30 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
+import { useGameStore } from "@/store/useGameStore";
 
-/** Development only: logs fps, draw calls and memory every 3 seconds, so you can see what a change really did. */
+/**
+ * Development only. Logs fps / draw calls / memory every 3 seconds, every canvas resize,
+ * and any frame that took longer than 60 ms (with the current phase), so a hitch can be traced to its moment.
+ */
 export default function PerfProbe() {
   const gl = useThree((s) => s.gl);
+  const size = useThree((s) => s.size);
+  const dpr = useThree((s) => s.viewport.dpr);
   const acc = useRef({ t: 0, f: 0 });
 
+  useEffect(() => {
+    console.log(`[canvas] ${size.width}x${size.height} @ dpr ${dpr}`);
+  }, [size, dpr]);
+
   useFrame((_, dt) => {
+    if (dt > 0.06) {
+      console.warn(
+        `[perf] long frame: ${(dt * 1000).toFixed(0)} ms (phase: ${useGameStore.getState().phase})`,
+      );
+    }
+
     acc.current.t += dt;
     acc.current.f++;
     if (acc.current.t < 3) return;
