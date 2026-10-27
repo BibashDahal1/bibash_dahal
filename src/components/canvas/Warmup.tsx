@@ -3,14 +3,15 @@
 import { useEffect } from "react";
 import { useThree } from "@react-three/fiber";
 import * as THREE from "three";
+import { prewarmScene } from "@/lib/prewarm";
+import { useGameStore } from "@/store/useGameStore";
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 /**
- * Uploads every texture in the scene to the GPU, a couple at a time, shortly after the scene mounts
- * (while the loading screen / intro form is still showing).
- * Without this, a texture is uploaded the first time something that uses it is drawn, so the stall
- * lands exactly when you first look at it, for example right as you stand up after waking.
+ * Mounted once per scene (key={scene}). Uploads every texture to the GPU a couple at a time.
+ * When this is a room change (the first load is handled by ReadySignal), it also draws the whole room once
+ * while the screen is still black from the fade, so the room never hitches as the fade lifts.
  */
 export default function Warmup() {
   const gl = useThree((s) => s.gl);
@@ -21,14 +22,14 @@ export default function Warmup() {
     let cancelled = false;
 
     (async () => {
-      await sleep(250); // let the scene finish mounting
+      const roomChange = useGameStore.getState().sceneReady;
+      await sleep(roomChange ? 40 : 250); // let the scene finish mounting
 
       const found = new Set<THREE.Texture>();
       const add = (v: unknown) => {
         const t = v as THREE.Texture | null;
         if (t && t.isTexture) found.add(t);
       };
-
       scene.traverse((o) => {
         const m = (o as THREE.Mesh).material as
           | THREE.Material
@@ -43,9 +44,8 @@ export default function Warmup() {
       });
 
       const list = [...found].filter(
-        (t) => t.image && !(t as THREE.VideoTexture).isVideoTexture, // skip textures with nothing to upload yet
+        (t) => t.image && !(t as THREE.VideoTexture).isVideoTexture,
       );
-
       for (let i = 0; i < list.length; i++) {
         if (cancelled) return;
         try {
@@ -56,7 +56,8 @@ export default function Warmup() {
         if (i % 2 === 1) await sleep(0); // spread the uploads over several frames
       }
 
-      if (!cancelled) gl.compile(scene, camera);
+      if (!cancelled && roomChange)
+        await prewarmScene(gl, scene, camera, () => cancelled);
     })();
 
     return () => {

@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useIsTouch } from "@/hooks/useIsTouch";
 import { useGameStore } from "@/store/useGameStore";
 import AudioController from "@/components/ui/AudioController";
@@ -27,17 +27,22 @@ export default function GameShell() {
   const isTouch = useIsTouch();
   const canMove = phase === "explore" || phase === "guided";
 
+  // The 3D scene only mounts once the quality is decided, so it is built ONCE with the right settings
+  // (antialiasing, crystal count, lights...). Before, it was built at High and then rebuilt for Low on weak devices.
+  const [qualityReady, setQualityReady] = useState(false);
+
   // phones and low-core machines start on Low; the visitor can switch with G / the button
   useEffect(() => {
     const weak =
       window.matchMedia("(pointer: coarse)").matches ||
       (navigator.hardwareConcurrency ?? 8) <= 4;
     useGameStore.getState().setQuality(weak ? "low" : "high");
+    setQualityReady(true);
   }, []);
 
   return (
     <main className="fixed inset-0 overflow-hidden bg-black">
-      <Experience />
+      {qualityReady && <Experience />}
       <AudioController />
       <WakeOverlay />
       <Hud />

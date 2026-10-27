@@ -7,6 +7,12 @@ let stamp = -1;
 let camId = -1;
 
 /**
+ * Culling switch. While it is off, everything counts as "in view".
+ * The pre-warm turns it off so every object is drawn once (and its data uploaded) during loading.
+ */
+export const cullState = { enabled: true };
+
+/**
  * Is a sphere inside the camera view? The frustum is rebuilt once per frame and shared by everything that asks,
  * so any number of objects can cull themselves for almost no cost.
  * `time` is state.clock.elapsedTime (it is the same for every callback within one frame).
@@ -17,6 +23,7 @@ export function inView(
   center: THREE.Vector3,
   radius: number,
 ) {
+  if (!cullState.enabled) return true;
   if (time !== stamp || camera.id !== camId) {
     stamp = time;
     camId = camera.id;
