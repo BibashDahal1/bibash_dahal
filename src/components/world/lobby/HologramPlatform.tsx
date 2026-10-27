@@ -3,6 +3,7 @@
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { PALETTES, type PaletteName } from "./hologramPalette";
 
 export const PLATFORM_H = 0.2; // height of the emitter surface
@@ -83,6 +84,13 @@ const STRIP_FRAG = /* glsl */ `
   }
 `;
 
+// the three floating arc rings (each ring is two arcs, merged into one mesh)
+const RINGS = [
+  { y: 0.32, r: 1.0, color: "a" },
+  { y: 0.55, r: 0.9, color: "c" },
+  { y: 0.8, r: 0.8, color: "a" },
+] as const;
+
 interface Props {
   width: number; // portrait width (sets beam spread)
   beamHeight: number;
@@ -97,6 +105,9 @@ export default function HologramPlatform({
   const pal = PALETTES[palette];
   const spin = useRef<(THREE.Group | null)[]>([]);
 
+  // one shared time value: written once per frame, read by every shader
+  const uTime = useMemo(() => ({ value: 0 }), []);
+
   const mats = useMemo(() => {
     const make = (frag: string, side: THREE.Side = THREE.FrontSide) =>
       new THREE.ShaderMaterial({
@@ -106,7 +117,7 @@ export default function HologramPlatform({
           uColA: { value: new THREE.Color(pal.a) },
           uColB: { value: new THREE.Color(pal.b) },
           uColC: { value: new THREE.Color(pal.c) },
-          uTime: { value: 0 },
+          uTime,
         },
         transparent: true,
         premultipliedAlpha: true,
@@ -130,35 +141,46 @@ export default function HologramPlatform({
       beam: make(BEAM_FRAG),
       strips: make(STRIP_FRAG),
       ringA: basic(pal.a),
-      ringB: basic(pal.c),
+      ringC: basic(pal.c),
       edgeA: basic(pal.a),
       edgeB: basic(pal.c),
     };
-  }, [pal]);
+  }, [pal, uTime]);
+
+  const ringGeos = useMemo(
+    () =>
+      RINGS.map((s) => {
+        const arcs = [0, Math.PI].map((off) => {
+          const g = new THREE.RingGeometry(
+            s.r - 0.014,
+            s.r + 0.014,
+            48,
+            1,
+            off,
+            1.9,
+          );
+          g.rotateX(-Math.PI / 2);
+          return g;
+        });
+        return mergeGeometries(arcs, false)!;
+      }),
+    [],
+  );
 
   useEffect(
     () => () => Object.values(mats).forEach((m) => m.dispose()),
     [mats],
   );
+  useEffect(() => () => ringGeos.forEach((g) => g.dispose()), [ringGeos]);
 
   useFrame((state) => {
     const t = state.clock.elapsedTime;
-    mats.emitter.uniforms.uTime.value = t;
-    mats.floor.uniforms.uTime.value = t;
-    mats.beam.uniforms.uTime.value = t;
-    mats.strips.uniforms.uTime.value = t;
-
+    uTime.value = t;
     const s = spin.current;
     if (s[0]) s[0].rotation.y = t * 0.6;
     if (s[1]) s[1].rotation.y = -t * 0.9;
     if (s[2]) s[2].rotation.y = t * 0.35;
   });
-
-  const ringSpecs = [
-    { y: 0.32, r: 1.0, mat: mats.ringA },
-    { y: 0.55, r: 0.9, mat: mats.ringB },
-    { y: 0.8, r: 0.8, mat: mats.ringA },
-  ];
 
   return (
     <group>
@@ -168,13 +190,13 @@ export default function HologramPlatform({
         rotation={[-Math.PI / 2, 0, 0]}
         renderOrder={1}
       >
-        <circleGeometry args={[2.6, 64]} />
+        <circleGeometry args={[2.6, 48]} />
         <primitive object={mats.floor} attach="material" />
       </mesh>
 
       {/* lower tier */}
       <mesh position={[0, 0.05, 0]}>
-        <cylinderGeometry args={[1.4, 1.5, 0.1, 48]} />
+        <cylinderGeometry args={[1.4, 1.5, 0.1, 40]} />
         <meshStandardMaterial
           color="#060a18"
           metalness={0.9}
@@ -182,19 +204,19 @@ export default function HologramPlatform({
         />
       </mesh>
       <mesh position={[0, 0.101, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[1.4, 0.012, 6, 64]} />
+        <torusGeometry args={[1.4, 0.012, 6, 48]} />
         <primitive object={mats.edgeA} attach="material" />
       </mesh>
 
       {/* chasing light strips: one mesh */}
       <mesh position={[0, 0.05, 0]}>
-        <cylinderGeometry args={[1.455, 1.455, 0.035, 64, 1, true]} />
+        <cylinderGeometry args={[1.455, 1.455, 0.035, 48, 1, true]} />
         <primitive object={mats.strips} attach="material" />
       </mesh>
 
       {/* upper tier */}
       <mesh position={[0, 0.14, 0]}>
-        <cylinderGeometry args={[1.05, 1.15, 0.08, 48]} />
+        <cylinderGeometry args={[1.05, 1.15, 0.08, 40]} />
         <meshStandardMaterial
           color="#0a0f22"
           metalness={0.95}
@@ -202,7 +224,7 @@ export default function HologramPlatform({
         />
       </mesh>
       <mesh position={[0, 0.181, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[1.05, 0.01, 6, 64]} />
+        <torusGeometry args={[1.05, 0.01, 6, 48]} />
         <primitive object={mats.edgeB} attach="material" />
       </mesh>
 
@@ -212,12 +234,12 @@ export default function HologramPlatform({
         rotation={[-Math.PI / 2, 0, 0]}
         renderOrder={2}
       >
-        <circleGeometry args={[0.9, 64]} />
+        <circleGeometry args={[0.9, 48]} />
         <primitive object={mats.emitter} attach="material" />
       </mesh>
 
-      {/* floating counter-rotating arc rings */}
-      {ringSpecs.map((s, i) => (
+      {/* floating counter-rotating arc rings: one mesh each */}
+      {RINGS.map((s, i) => (
         <group
           key={i}
           position={[0, PLATFORM_H + s.y, 0]}
@@ -225,20 +247,18 @@ export default function HologramPlatform({
             spin.current[i] = el;
           }}
         >
-          {[0, Math.PI].map((off) => (
-            <mesh key={off} rotation={[-Math.PI / 2, 0, 0]}>
-              <ringGeometry
-                args={[s.r - 0.014, s.r + 0.014, 64, 1, off, 1.9]}
-              />
-              <primitive object={s.mat} attach="material" />
-            </mesh>
-          ))}
+          <mesh geometry={ringGeos[i]}>
+            <primitive
+              object={s.color === "a" ? mats.ringA : mats.ringC}
+              attach="material"
+            />
+          </mesh>
         </group>
       ))}
 
       {/* light beam up to the portrait */}
       <mesh position={[0, PLATFORM_H + beamHeight / 2, 0]}>
-        <cylinderGeometry args={[width * 0.42, 0.8, beamHeight, 48, 1, true]} />
+        <cylinderGeometry args={[width * 0.42, 0.8, beamHeight, 32, 1, true]} />
         <primitive object={mats.beam} attach="material" />
       </mesh>
     </group>

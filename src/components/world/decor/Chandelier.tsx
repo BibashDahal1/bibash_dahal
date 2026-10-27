@@ -3,6 +3,7 @@
 import { ReactNode, useLayoutEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
+import { inView } from "@/lib/inView";
 
 const BRASS = "#c9a24a";
 const RINGS = [
@@ -111,13 +112,18 @@ type Props = {
   crystals?: number;
 };
 
-/** Brass-and-glass chandelier: instanced crystals / candles / spokes, slow spin, sparkle, and a real light. */
+/**
+ * Brass-and-glass chandelier: instanced crystals / candles / spokes, slow spin, sparkle, and a real light.
+ * The metal and glass are skipped (and stop animating) while the chandelier is out of view.
+ * The light itself always stays on, so the room's lighting never changes (and never recompiles shaders).
+ */
 export default function Chandelier({
   position,
   drop = 1.5,
   scale = 1,
   crystals = 150,
 }: Props) {
+  const parts = useRef<THREE.Group>(null);
   const body = useRef<THREE.Group>(null);
   const glass = useRef<THREE.MeshStandardMaterial>(null);
 
@@ -126,90 +132,117 @@ export default function Chandelier({
   const flameM = useMemo(() => candleMatrices("flame"), []);
   const spokeM = useMemo(() => spokeMatrices(), []);
 
-  useFrame(({ clock }, dt) => {
+  const [px, py, pz] = position;
+  const center = useMemo(
+    () => new THREE.Vector3(px, py - drop * scale * 0.7, pz),
+    [px, py, pz, drop, scale],
+  );
+  const radius = (1.2 + drop * 0.5 + 0.5) * scale;
+
+  useFrame(({ camera, clock }, dt) => {
+    const g = parts.current;
+    if (!g) return;
+    const vis = inView(camera, clock.elapsedTime, center, radius);
+    g.visible = vis;
+    if (!vis) return;
     if (body.current) body.current.rotation.y += dt * 0.12;
     if (glass.current)
       glass.current.emissiveIntensity =
-        0.2 + 0.12 * Math.sin(clock.elapsedTime * 1.8 + position[2]);
+        0.2 + 0.12 * Math.sin(clock.elapsedTime * 1.8 + pz);
   });
 
   return (
     <group position={position} scale={scale}>
-      {/* ceiling rose + chain */}
-      <mesh position={[0, -0.04, 0]}>
-        <cylinderGeometry args={[0.35, 0.42, 0.08, 20]} />
-        <meshStandardMaterial color={BRASS} metalness={0.9} roughness={0.3} />
-      </mesh>
-      <mesh position={[0, -drop / 2, 0]}>
-        <cylinderGeometry args={[0.012, 0.012, drop, 6]} />
-        <meshStandardMaterial color={BRASS} metalness={0.9} roughness={0.3} />
-      </mesh>
-
-      <group ref={body} position={[0, -drop, 0]}>
-        {/* column + finial */}
-        <mesh position={[0, -0.4, 0]}>
-          <cylinderGeometry args={[0.05, 0.05, 1.0, 12]} />
+      <group ref={parts}>
+        {/* ceiling rose + chain */}
+        <mesh position={[0, -0.04, 0]}>
+          <cylinderGeometry args={[0.35, 0.42, 0.08, 20]} />
           <meshStandardMaterial color={BRASS} metalness={0.9} roughness={0.3} />
         </mesh>
-        <mesh position={[0, 0.1, 0]}>
-          <sphereGeometry args={[0.09, 14, 10]} />
+        <mesh position={[0, -drop / 2, 0]}>
+          <cylinderGeometry args={[0.012, 0.012, drop, 6]} />
           <meshStandardMaterial color={BRASS} metalness={0.9} roughness={0.3} />
         </mesh>
 
-        {/* rings */}
-        {RINGS.map((ring) => (
-          <mesh
-            key={ring.r}
-            position={[0, ring.y, 0]}
-            rotation={[Math.PI / 2, 0, 0]}
-          >
-            <torusGeometry args={[ring.r, 0.018, 8, 40]} />
+        <group ref={body} position={[0, -drop, 0]}>
+          {/* column + finial */}
+          <mesh position={[0, -0.4, 0]}>
+            <cylinderGeometry args={[0.05, 0.05, 1.0, 12]} />
             <meshStandardMaterial
               color={BRASS}
               metalness={0.9}
               roughness={0.3}
             />
           </mesh>
-        ))}
+          <mesh position={[0, 0.1, 0]}>
+            <sphereGeometry args={[0.09, 14, 10]} />
+            <meshStandardMaterial
+              color={BRASS}
+              metalness={0.9}
+              roughness={0.3}
+            />
+          </mesh>
 
-        <Instances matrices={spokeM}>
-          <boxGeometry args={[1, 1, 1]} />
-          <meshStandardMaterial color={BRASS} metalness={0.9} roughness={0.3} />
-        </Instances>
-        <Instances matrices={candleM}>
-          <cylinderGeometry args={[0.5, 0.5, 1, 8]} />
-          <meshStandardMaterial color="#f4ecd8" roughness={0.6} />
-        </Instances>
-        <Instances matrices={flameM}>
-          <sphereGeometry args={[1, 8, 6]} />
-          <meshBasicMaterial color="#ffd98a" />
-        </Instances>
+          {/* rings */}
+          {RINGS.map((ring) => (
+            <mesh
+              key={ring.r}
+              position={[0, ring.y, 0]}
+              rotation={[Math.PI / 2, 0, 0]}
+            >
+              <torusGeometry args={[ring.r, 0.018, 8, 40]} />
+              <meshStandardMaterial
+                color={BRASS}
+                metalness={0.9}
+                roughness={0.3}
+              />
+            </mesh>
+          ))}
 
-        {/* the glass */}
-        <Instances matrices={crystalM}>
-          <octahedronGeometry args={[1, 0]} />
-          <meshStandardMaterial
-            ref={glass}
-            color="#dff3ff"
-            transparent
-            opacity={0.62}
-            roughness={0.05}
-            metalness={0.2}
-            emissive="#ffd8a0"
-            emissiveIntensity={0.2}
-            flatShading
-            depthWrite={false}
-          />
-        </Instances>
+          <Instances matrices={spokeM}>
+            <boxGeometry args={[1, 1, 1]} />
+            <meshStandardMaterial
+              color={BRASS}
+              metalness={0.9}
+              roughness={0.3}
+            />
+          </Instances>
+          <Instances matrices={candleM}>
+            <cylinderGeometry args={[0.5, 0.5, 1, 8]} />
+            <meshStandardMaterial color="#f4ecd8" roughness={0.6} />
+          </Instances>
+          <Instances matrices={flameM}>
+            <sphereGeometry args={[1, 8, 6]} />
+            <meshBasicMaterial color="#ffd98a" />
+          </Instances>
 
-        <pointLight
-          position={[0, -0.25, 0]}
-          color="#ffe2b8"
-          intensity={170 * scale * scale}
-          distance={24}
-          decay={2}
-        />
+          {/* the glass */}
+          <Instances matrices={crystalM}>
+            <octahedronGeometry args={[1, 0]} />
+            <meshStandardMaterial
+              ref={glass}
+              color="#dff3ff"
+              transparent
+              opacity={0.62}
+              roughness={0.05}
+              metalness={0.2}
+              emissive="#ffd8a0"
+              emissiveIntensity={0.2}
+              flatShading
+              depthWrite={false}
+            />
+          </Instances>
+        </group>
       </group>
+
+      {/* the light: outside the cullable group, so it never switches off */}
+      <pointLight
+        position={[0, -drop - 0.25, 0]}
+        color="#ffe2b8"
+        intensity={170 * scale * scale}
+        distance={24}
+        decay={2}
+      />
     </group>
   );
 }

@@ -21,7 +21,11 @@ type Props = {
   children?: ReactNode;
 };
 
-/** Everything that makes a room a room: wood plank floor, wood walls, coffered ceiling, chandeliers, sunset light. */
+/**
+ * Everything that makes a room a room: wood plank floor, wood walls, coffered ceiling, chandeliers, sunset light.
+ * The only real point lights are the chandeliers' own: every extra point light makes EVERY lit surface
+ * in the room more expensive to draw.
+ */
 export default function RoomShell({
   dims,
   theme,
@@ -60,17 +64,6 @@ export default function RoomShell({
           crystals={q.crystals}
         />
       ))}
-      {q.sun &&
-        [-D / 3, D / 3].map((z) => (
-          <pointLight
-            key={z}
-            position={[0, H - 1, z]}
-            color="#ffd9a8"
-            intensity={50}
-            distance={20}
-            decay={2}
-          />
-        ))}
 
       {/* polished wood plank floor */}
       <mesh rotation={[-Math.PI / 2, 0, 0]}>

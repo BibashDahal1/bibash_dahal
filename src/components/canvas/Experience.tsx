@@ -13,6 +13,7 @@ import ProjectsRoom from "@/components/world/rooms/ProjectsRoom";
 import { QUALITY } from "@/constants/quality";
 import { LYING_HEIGHT, SPAWN } from "@/constants/world";
 import { useGameStore, type Scene } from "@/store/useGameStore";
+import PerfProbe from "./PerfProbe";
 import ReadySignal from "./ReadySignal";
 
 // background and fog colour for each place
@@ -73,6 +74,8 @@ export default function Experience() {
             s.setQuality("low");
         }}
       />
+
+      {process.env.NODE_ENV === "development" && <PerfProbe />}
     </Canvas>
   );
 }

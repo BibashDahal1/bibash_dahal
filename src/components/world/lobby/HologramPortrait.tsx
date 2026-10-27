@@ -3,6 +3,7 @@
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
+import { inView } from "@/lib/inView";
 import HologramPlatform, { PLATFORM_H } from "./HologramPlatform";
 import { PALETTES, type PaletteName } from "./hologramPalette";
 
@@ -14,14 +15,13 @@ const H = 2904;
 const PAD_X = 1.12;
 const PAD_Y = 1.06;
 
-const SIL_SCALE = 0.5; // static black silhouette + contour (drawn once)
+const SIL_SCALE = 0.4; // static black silhouette (drawn once)
 const SIL_W = Math.round(W * SIL_SCALE);
 const SIL_H = Math.round(H * SIL_SCALE);
 
-const STROKE_SCALE = 0.4; // animated outline (lower = faster)
+const STROKE_SCALE = 0.32; // animated outline (lower = faster)
 const ST_W = Math.round(W * STROKE_SCALE);
 const ST_H = Math.round(H * STROKE_SCALE);
-const STROKE_STEP_MS = 1000 / 30; // outline redraw rate
 
 const GLOW_SCALE = 0.18; // blurred halo (drawn once, tiny)
 const GLOW_W = Math.round(W * PAD_X * GLOW_SCALE);
@@ -102,7 +102,7 @@ function buildTimeline(kinds: Kind[]) {
   return { dStart, dDur, uStart, uDur, fillIn, sheenAt, fillOut, total };
 }
 
-/* ---------- shader (3 texture reads per pixel) ---------- */
+/* ---------- shader ---------- */
 const VERT = /* glsl */ `
   varying vec2 vUv;
   void main() {
@@ -114,12 +114,13 @@ const VERT = /* glsl */ `
 /*
   Premultiplied alpha, NormalBlending:
     black portrait  = alpha only (hides what is behind it)
-    blue light      = rgb only  (outline, contour, glow, scanlines)
-  Nothing else is drawn: no panel, no rectangle.
+    blue light      = rgb only  (outline, glow, scanlines)
+  The textures are uploaded without flipping (cheaper), so the shader flips v itself.
+  The outline texture is uploaded premultiplied, so its rgb is already multiplied by its alpha.
 */
 const FRAG = /* glsl */ `
-  uniform sampler2D uStroke; // animated outline
-  uniform sampler2D uSil;    // a = silhouette, rgb = baked blue contour
+  uniform sampler2D uStroke; // animated outline (premultiplied)
+  uniform sampler2D uSil;    // a = silhouette
   uniform sampler2D uGlow;   // blurred halo, alpha only (covers the whole plane)
   uniform float uFillOpacity;
   uniform float uSheen;
@@ -136,11 +137,12 @@ const FRAG = /* glsl */ `
     vec2 pu = (vUv - 0.5) * uPad + 0.5;
     float inside = step(0.0, pu.x) * step(pu.x, 1.0) * step(0.0, pu.y) * step(pu.y, 1.0);
 
-    vec4 s = texture2D(uStroke, pu);
-    vec4 f = texture2D(uSil, pu);
-    float gl = texture2D(uGlow, vUv).a;
+    vec2 tu = vec2(pu.x, 1.0 - pu.y);
+    vec3 outline = texture2D(uStroke, tu).rgb;
+    float silA = texture2D(uSil, tu).a;
+    float gl = texture2D(uGlow, vec2(vUv.x, 1.0 - vUv.y)).a;
 
-    float sil = f.a * inside;
+    float sil = silA * inside;
     float fa  = sil * uFillOpacity;
 
     float lines = 0.5 + 0.5 * sin(pu.y * 620.0 - uTime * 4.0);
@@ -151,9 +153,8 @@ const FRAG = /* glsl */ `
     float on = step(0.0, uSheen) * step(uSheen, 1.0);
     float sweep = smoothstep(0.1, 0.0, abs(c - p)) * on;
 
-    vec3 light = s.rgb * s.a * inside                      // outline while drawing
-               + f.rgb * inside * uFillOpacity * 1.2       // thin blue contour
-               + uColA * gl * (1.0 - sil) * uFillOpacity * 0.9  // soft halo
+    vec3 light = outline * inside
+               + uColA * gl * (1.0 - sil) * uFillOpacity * 0.9
                + uColA * fa * lines * 0.03
                + uColC * fa * band * 0.12
                + uColC * fa * sweep * 0.18;
@@ -173,43 +174,174 @@ const FRAG = /* glsl */ `
   }
 `;
 
-/* ---------- helpers ---------- */
+/* ---------- paths -> point lists ---------- */
 
-// canvas has no pathLength, so measure real lengths once (batched, non-blocking)
-async function measureLengths(chunks: Chunk[], cancelled: () => boolean) {
-  const NS = "http://www.w3.org/2000/svg";
-  const svg = document.createElementNS(NS, "svg");
-  svg.setAttribute("width", "0");
-  svg.setAttribute("height", "0");
-  svg.style.cssText = "position:absolute;visibility:hidden;pointer-events:none";
-  const p = document.createElementNS(NS, "path") as SVGPathElement;
-  svg.appendChild(p);
-  document.body.appendChild(svg);
+/**
+ * A path flattened into points once. `cum` is the distance along the path at each point, so any piece of the
+ * outline can be drawn by itself without touching the rest. `brk` marks the first point of each sub-shape.
+ */
+interface Poly {
+  x: Float32Array;
+  y: Float32Array;
+  cum: Float32Array;
+  brk: Uint8Array;
+  n: number;
+}
 
-  const out = new Float32Array(chunks.length);
-  for (let i = 0; i < chunks.length; i++) {
-    p.setAttribute("d", chunks[i][1]);
-    out[i] = Math.max(p.getTotalLength(), 1);
-    if (i % 40 === 39) {
-      await new Promise((r) => setTimeout(r, 0));
-      if (cancelled()) break;
+const TOKEN = /[MCLZ]|-?\d*\.?\d+(?:[eE][-+]?\d+)?/g;
+
+function parsePath(d: string): Poly {
+  const tok = d.match(TOKEN) ?? [];
+  const xs: number[] = [];
+  const ys: number[] = [];
+  const br: number[] = [];
+  let cmd = "";
+  let cx = 0;
+  let cy = 0;
+  let sx = 0;
+  let sy = 0;
+  let i = 0;
+
+  const add = (x: number, y: number, b: number) => {
+    xs.push(x);
+    ys.push(y);
+    br.push(b);
+    cx = x;
+    cy = y;
+  };
+  const num = () => parseFloat(tok[i++]);
+
+  while (i < tok.length) {
+    const c = tok[i].charCodeAt(0);
+    if (c === 77 || c === 67 || c === 76 || c === 90) {
+      // M C L Z
+      cmd = tok[i++];
+      if (cmd === "Z" && (cx !== sx || cy !== sy)) add(sx, sy, 0);
+      continue;
+    }
+    if (cmd === "M") {
+      sx = num();
+      sy = num();
+      add(sx, sy, 1);
+      cmd = "L"; // extra pairs after M are line-tos
+    } else if (cmd === "L") {
+      const x = num();
+      const y = num();
+      add(x, y, 0);
+    } else if (cmd === "C") {
+      const x1 = num();
+      const y1 = num();
+      const x2 = num();
+      const y2 = num();
+      const x3 = num();
+      const y3 = num();
+      const x0 = cx;
+      const y0 = cy;
+      const ctrl =
+        Math.hypot(x1 - x0, y1 - y0) +
+        Math.hypot(x2 - x1, y2 - y1) +
+        Math.hypot(x3 - x2, y3 - y2);
+      const n = Math.min(20, Math.max(2, Math.ceil(ctrl / 5)));
+      for (let k = 1; k <= n; k++) {
+        const t = k / n;
+        const u = 1 - t;
+        const a = u * u * u;
+        const b = 3 * u * u * t;
+        const cc = 3 * u * t * t;
+        const dd = t * t * t;
+        add(
+          a * x0 + b * x1 + cc * x2 + dd * x3,
+          a * y0 + b * y1 + cc * y2 + dd * y3,
+          0,
+        );
+      }
+    } else {
+      i++;
     }
   }
-  svg.remove();
-  return cancelled() ? null : out;
+
+  if (!xs.length) add(0, 0, 1);
+  const n = xs.length;
+  const x = Float32Array.from(xs);
+  const y = Float32Array.from(ys);
+  const brk = Uint8Array.from(br);
+  const cum = new Float32Array(n);
+  for (let k = 1; k < n; k++)
+    cum[k] =
+      cum[k - 1] + (brk[k] ? 0 : Math.hypot(x[k] - x[k - 1], y[k] - y[k - 1]));
+  return { x, y, cum, brk, n };
+}
+
+/** adds the piece [s, e] (distance along the path) to the current canvas path */
+function appendRange(
+  ctx: CanvasRenderingContext2D,
+  p: Poly,
+  s: number,
+  e: number,
+) {
+  const { x, y, cum, brk, n } = p;
+  if (e <= s) return;
+
+  // first point whose distance is beyond s
+  let lo = 1;
+  let hi = n;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (cum[mid] > s) hi = mid;
+    else lo = mid + 1;
+  }
+  let k = lo;
+  if (k >= n) return;
+
+  const c0 = cum[k - 1];
+  const c1 = cum[k];
+  const f = c1 > c0 ? (s - c0) / (c1 - c0) : 0;
+  ctx.moveTo(
+    x[k - 1] + (x[k] - x[k - 1]) * f,
+    y[k - 1] + (y[k] - y[k - 1]) * f,
+  );
+
+  for (; k < n && cum[k - 1] < e; k++) {
+    if (brk[k]) {
+      ctx.moveTo(x[k], y[k]);
+      continue;
+    }
+    if (cum[k] <= e) {
+      ctx.lineTo(x[k], y[k]);
+    } else {
+      const g = (e - cum[k - 1]) / (cum[k] - cum[k - 1]);
+      ctx.lineTo(
+        x[k - 1] + (x[k] - x[k - 1]) * g,
+        y[k - 1] + (y[k] - y[k - 1]) * g,
+      );
+    }
+  }
+}
+
+/** builds the whole artwork as one canvas path (for the silhouette and the glow) */
+function polyPath(ctx: CanvasRenderingContext2D, polys: Poly[]) {
+  ctx.beginPath();
+  for (const p of polys) {
+    for (let k = 0; k < p.n; k++) {
+      if (p.brk[k]) ctx.moveTo(p.x[k], p.y[k]);
+      else ctx.lineTo(p.x[k], p.y[k]);
+    }
+  }
 }
 
 const tick = () => new Promise<void>((r) => setTimeout(r, 0));
 
-function bakeSilhouette(canvas: HTMLCanvasElement, full: Path2D) {
+function bakeSilhouette(canvas: HTMLCanvasElement, polys: Poly[]) {
   const ctx = canvas.getContext("2d")!;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.setTransform(SIL_SCALE, 0, 0, SIL_SCALE, 0, 0);
-  ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = "#000";
-  ctx.fill(full, "evenodd");
+  polyPath(ctx, polys);
+  ctx.fill("evenodd");
 }
 
-function bakeGlow(canvas: HTMLCanvasElement, full: Path2D) {
+function bakeGlow(canvas: HTMLCanvasElement, polys: Poly[]) {
   const ctx = canvas.getContext("2d")!;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -229,45 +361,62 @@ function bakeGlow(canvas: HTMLCanvasElement, full: Path2D) {
   ctx.shadowOffsetX = OFF;
   ctx.shadowOffsetY = 0;
   ctx.fillStyle = "#fff";
-  ctx.fill(full, "evenodd");
-  ctx.fill(full, "evenodd"); // second pass = stronger halo
+  polyPath(ctx, polys);
+  ctx.fill("evenodd");
+  ctx.fill("evenodd"); // second pass = stronger halo
 }
 
-/** draws only the NEW piece of each stroke (and erases only the NEWLY vanished piece) */
+/**
+ * Draws only the NEW piece of each stroke and erases only the NEWLY vanished piece.
+ * All pieces of one step go into a single canvas path, so it costs two stroke calls per step.
+ */
 function stepStrokes(r: Runtime, ctx: CanvasRenderingContext2D, t: number) {
-  const { tl, paths, lens, prevDp, prevUp } = r;
-  let changed = false;
+  const { tl, polys, lens, prevDp, prevUp } = r;
+  let drew = false;
+  let erased = false;
 
-  for (let i = 0; i < paths.length; i++) {
+  ctx.beginPath();
+  for (let i = 0; i < polys.length; i++) {
+    if (t < tl.dStart[i] || prevDp[i] >= 1) continue;
     const dp = easeDraw(clamp01((t - tl.dStart[i]) / tl.dDur[i]));
-    const up = easeUndraw(clamp01((t - tl.uStart[i]) / tl.uDur[i]));
     const L = lens[i];
-
-    if (dp > prevDp[i] && ((dp - prevDp[i]) * L >= MIN_PIECE || dp === 1)) {
-      const s = Math.max(0, prevDp[i] * L - OVERLAP);
-      const e = Math.min(L, dp * L + OVERLAP * 0.5);
-      ctx.setLineDash([e - s, L * 3]);
-      ctx.lineDashOffset = -s;
-      ctx.stroke(paths[i]);
+    if (dp > prevDp[i] && ((dp - prevDp[i]) * L >= MIN_PIECE || dp >= 1)) {
+      appendRange(
+        ctx,
+        polys[i],
+        Math.max(0, prevDp[i] * L - OVERLAP),
+        Math.min(L, dp * L + OVERLAP * 0.5),
+      );
       prevDp[i] = dp;
-      changed = true;
-    }
-
-    if (up > prevUp[i] && ((up - prevUp[i]) * L >= MIN_PIECE || up === 1)) {
-      const s = Math.max(0, prevUp[i] * L - 1);
-      const e = Math.min(L, up * L + 1);
-      ctx.globalCompositeOperation = "destination-out";
-      ctx.lineWidth = ERASE_W;
-      ctx.setLineDash([e - s, L * 3]);
-      ctx.lineDashOffset = -s;
-      ctx.stroke(paths[i]);
-      ctx.globalCompositeOperation = "source-over";
-      ctx.lineWidth = STROKE_W;
-      prevUp[i] = up;
-      changed = true;
+      drew = true;
     }
   }
-  return changed;
+  if (drew) ctx.stroke();
+
+  ctx.beginPath();
+  for (let i = 0; i < polys.length; i++) {
+    if (t < tl.uStart[i] || prevUp[i] >= 1) continue;
+    const up = easeUndraw(clamp01((t - tl.uStart[i]) / tl.uDur[i]));
+    const L = lens[i];
+    if (up > prevUp[i] && ((up - prevUp[i]) * L >= MIN_PIECE || up >= 1)) {
+      appendRange(
+        ctx,
+        polys[i],
+        Math.max(0, prevUp[i] * L - 1),
+        Math.min(L, up * L + 1),
+      );
+      prevUp[i] = up;
+      erased = true;
+    }
+  }
+  if (erased) {
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.lineWidth = ERASE_W;
+    ctx.stroke();
+    ctx.globalCompositeOperation = "source-over";
+    ctx.lineWidth = STROKE_W;
+  }
+  return drew || erased;
 }
 
 /* ---------- component ---------- */
@@ -285,7 +434,7 @@ interface HologramPortraitProps {
 }
 
 interface Runtime {
-  paths: Path2D[];
+  polys: Poly[];
   lens: Float32Array;
   tl: ReturnType<typeof buildTimeline>;
   t: number;
@@ -303,12 +452,14 @@ const makeCanvas = (w: number, h: number) => {
   return c;
 };
 
-const makeTex = (c: HTMLCanvasElement) => {
+const makeTex = (c: HTMLCanvasElement, premultiplied = false) => {
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.generateMipmaps = false;
   t.minFilter = THREE.LinearFilter;
   t.magFilter = THREE.LinearFilter;
+  t.flipY = false; // the shader flips v: cheaper than flipping on every upload
+  t.premultiplyAlpha = premultiplied; // canvases are premultiplied already, so this skips a conversion
   return t;
 };
 
@@ -329,8 +480,19 @@ export default function HologramPortrait({
   const planeH = height * PAD_Y;
   const portraitY = PLATFORM_H + lift + planeH / 2;
 
+  const rootRef = useRef<THREE.Group>(null);
   const faceRef = useRef<THREE.Group>(null);
   const rt = useRef<Runtime | null>(null);
+
+  // a sphere around the platform and portrait, for "is it on screen?"
+  const px = position[0];
+  const py = position[1];
+  const pz = position[2];
+  const center = useMemo(
+    () => new THREE.Vector3(px, py + portraitY, pz),
+    [px, py, pz, portraitY],
+  );
+  const radius = planeH * 0.5 + 1.8;
 
   const strokeCanvas = useMemo(() => makeCanvas(ST_W, ST_H), []);
   const silCanvas = useMemo(() => makeCanvas(SIL_W, SIL_H), []);
@@ -338,7 +500,11 @@ export default function HologramPortrait({
 
   const [strokeTex, silTex, glowTex] = useMemo(
     () =>
-      [makeTex(strokeCanvas), makeTex(silCanvas), makeTex(glowCanvas)] as const,
+      [
+        makeTex(strokeCanvas, true),
+        makeTex(silCanvas),
+        makeTex(glowCanvas),
+      ] as const,
     [strokeCanvas, silCanvas, glowCanvas],
   );
 
@@ -371,35 +537,44 @@ export default function HologramPortrait({
     [strokeTex, silTex, glowTex, pal],
   );
 
-  // load data, measure strokes, bake the static textures once
+  // load the artwork, flatten the paths, bake the static textures once (in small slices, never one long stall)
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
       const data = await import("./portraitData");
       if (cancelled) return;
-      const chunks = data.PORTRAIT_CHUNKS as Chunk[];
+      const chunks = data.PORTRAIT_CHUNKS as unknown as Chunk[];
 
-      const lens = await measureLengths(chunks, () => cancelled);
-      if (cancelled || !lens) return;
+      const polys: Poly[] = [];
+      let t0 = performance.now();
+      for (let i = 0; i < chunks.length; i++) {
+        polys.push(parsePath(chunks[i][1]));
+        if (performance.now() - t0 > 8) {
+          await tick();
+          if (cancelled) return;
+          t0 = performance.now();
+        }
+      }
+      const lens = new Float32Array(polys.length);
+      for (let i = 0; i < polys.length; i++)
+        lens[i] = Math.max(polys[i].cum[polys[i].n - 1], 1);
 
-      const paths = chunks.map(([, d]) => new Path2D(d));
-      const full = new Path2D(chunks.map((c) => c[1]).join(""));
-
-      bakeSilhouette(silCanvas, full);
+      bakeSilhouette(silCanvas, polys);
       silTex.needsUpdate = true;
       await tick();
       if (cancelled) return;
 
-      bakeGlow(glowCanvas, full);
+      bakeGlow(glowCanvas, polys);
       glowTex.needsUpdate = true;
       await tick();
       if (cancelled) return;
 
       // animated-outline canvas: set up once, then only ever add / erase pieces
       const sctx = strokeCanvas.getContext("2d")!;
+      sctx.setTransform(1, 0, 0, 1, 0, 0);
+      sctx.clearRect(0, 0, ST_W, ST_H);
       sctx.setTransform(STROKE_SCALE, 0, 0, STROKE_SCALE, 0, 0);
-      sctx.clearRect(0, 0, W, H);
       const g = sctx.createLinearGradient(400, 200, 1800, 2700);
       g.addColorStop(0, pal.stroke[0]);
       g.addColorStop(0.5, pal.stroke[1]);
@@ -410,7 +585,7 @@ export default function HologramPortrait({
       sctx.lineCap = "butt";
 
       rt.current = {
-        paths,
+        polys,
         lens,
         tl: buildTimeline(chunks.map((c) => c[0])),
         t: 0,
@@ -438,24 +613,31 @@ export default function HologramPortrait({
 
   useFrame((state, delta) => {
     const time = state.clock.elapsedTime;
+    const root = rootRef.current;
+    if (!root) return;
+
+    // not on screen, or too far away: draw nothing and do no work at all
+    const d2 = state.camera.position.distanceToSquared(center);
+    const visible =
+      d2 < maxDistance * maxDistance &&
+      inView(state.camera, time, center, radius);
+    root.visible = visible;
+    if (!visible) return;
+
     const u = material.uniforms;
     u.uTime.value = time;
 
-    // float, face the camera, hide + pause when far away
+    // float and face the camera
     const face = faceRef.current;
     if (face) {
-      face.getWorldPosition(_wp);
-      face.visible =
-        state.camera.position.distanceToSquared(_wp) <
-        maxDistance * maxDistance;
       face.position.y = portraitY + Math.sin(time * 1.1) * floatAmp;
       if (billboard) {
+        face.getWorldPosition(_wp);
         face.rotation.y = Math.atan2(
           state.camera.position.x - _wp.x,
           state.camera.position.z - _wp.z,
         );
       }
-      if (!face.visible) return;
     }
 
     const r = rt.current;
@@ -471,16 +653,21 @@ export default function HologramPortrait({
 
     // loop restart: start from a clean canvas
     if (t < last) {
-      ctx.clearRect(0, 0, W, H);
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, ST_W, ST_H);
+      ctx.restore();
       r.prevDp.fill(0);
       r.prevUp.fill(0);
       strokeTex.needsUpdate = true;
     }
 
-    // outline: ~30 Hz, incremental
+    // outline: updated less often the farther away you are
+    const dist = Math.sqrt(d2);
+    const stepMs = dist < 14 ? 1000 / 24 : dist < 24 ? 1000 / 15 : 100;
     r.acc += dtMs;
-    if (r.acc >= STROKE_STEP_MS) {
-      r.acc %= STROKE_STEP_MS;
+    if (r.acc >= stepMs) {
+      r.acc %= stepMs;
       if (stepStrokes(r, ctx, t)) strokeTex.needsUpdate = true;
     }
 
@@ -494,7 +681,7 @@ export default function HologramPortrait({
   });
 
   return (
-    <group position={position}>
+    <group ref={rootRef} position={position}>
       {showBase && (
         <HologramPlatform
           width={width}
