@@ -64,7 +64,7 @@ export default function MenuOverlay() {
 
   return (
     <div className="absolute inset-x-0 bottom-0 z-40 flex justify-center p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-      <div className="w-full max-w-xl rounded-2xl border border-[#d4af37]/30 bg-[#0f0d0b]/90 p-4 shadow-2xl backdrop-blur-sm sm:p-5">
+      <div className="w-full max-w-xl rounded-2xl border border-[#d4af37]/30 bg-[#0f0d0b]/95 p-4 shadow-2xl sm:p-5">
         <p className="font-display text-sm text-[#f4ede0] sm:text-base">
           How may I help you, {name}?
         </p>

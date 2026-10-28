@@ -9,12 +9,6 @@ import { useGameStore } from "@/store/useGameStore";
 const FIRST_HINT_MS = 6000; // small first-time hint in the lobby
 const SCENE_GRACE_MS = 1500; // ignore lock drops right after a room change
 
-/**
- * Desktop only. Clicking the scene captures the mouse, so the mouse simply looks around.
- * While captured, a click uses whatever the crosshair is on.
- *  - Esc (visitor frees the mouse): the screen darkens lightly and a highlighted message shows until the next click.
- *  - Room changes drop the capture too, but that never shows the overlay.
- */
 export default function DesktopMouseLook() {
   const phase = useGameStore((s) => s.phase);
   const detail = useGameStore((s) => s.detail);
@@ -112,8 +106,8 @@ export default function DesktopMouseLook() {
   // Esc overlay: light dim + highlighted message
   if (released) {
     return (
-      <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-black/40 px-4 backdrop-blur-[1px]">
-        <div className="rounded-2xl border border-[#d4af37]/70 bg-black/70 px-6 py-4 text-center shadow-[0_0_30px_rgba(212,175,55,0.25)]">
+      <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-black/45 px-4">
+        <div className="rounded-2xl border border-[#d4af37]/70 bg-black/80 px-6 py-4 text-center shadow-[0_0_30px_rgba(212,175,55,0.25)]">
           <p className="text-sm font-semibold tracking-wide text-[#ffe08a]">
             Click to look around again
           </p>
@@ -129,7 +123,7 @@ export default function DesktopMouseLook() {
   if (firstHint) {
     return (
       <div className="pointer-events-none absolute inset-x-0 bottom-24 z-30 flex justify-center px-4">
-        <p className="rounded-full bg-black/45 px-3 py-1.5 text-[11px] text-[#f4ede0]/90 backdrop-blur-sm">
+        <p className="rounded-full bg-black/65 px-3 py-1.5 text-[11px] text-[#f4ede0]/90">
           Click to look around with the mouse · Esc to release
         </p>
       </div>

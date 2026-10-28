@@ -16,26 +16,50 @@ import { useSpeech } from "@/hooks/useSpeech";
 import { ding } from "@/lib/audio";
 import { playerPos } from "@/lib/player";
 import { sleep } from "@/lib/sleep";
+import { armSpeechWarmup } from "@/lib/speechWarmup";
 import { useGameStore } from "@/store/useGameStore";
 import SpeechBubble from "./SpeechBubble";
 
 const lineTime = (text: string) => Math.max(1800, text.length * 55);
 
+/** resolves when the browser is idle (or after 400 ms at the latest), so heavy work never lands on a busy frame */
+const idle = () =>
+  new Promise<void>((resolve) => {
+    const w = window as Window & {
+      requestIdleCallback?: (
+        cb: () => void,
+        opts?: { timeout: number },
+      ) => number;
+    };
+    if (w.requestIdleCallback)
+      w.requestIdleCallback(() => resolve(), { timeout: 400 });
+    else setTimeout(resolve, 0);
+  });
+
 export default function Receptionist() {
   const name = useGameStore((s) => s.name);
-  const phase = useGameStore((s) => s.phase);
-  const greetCount = useGameStore((s) => s.greetCount);
   const pose = useGameStore((s) => s.receptionistPose);
   const line = useGameStore((s) => s.lines.receptionist);
   const reply = useGameStore((s) => s.reply);
+
+  // Narrow subscriptions: this component only re-renders when one of these yes/no values really flips.
+  // Subscribing to the whole `phase` re-rendered the receptionist (and her chair and body) at every phase change,
+  // including the moment the visitor finishes waking up.
+  const calling = useGameStore(
+    (s) =>
+      s.phase === "waking" || (s.phase === "explore" && s.greetCount === 0),
+  );
+  const greeting = useGameStore((s) => s.phase === "greeting");
+
   const { speak, cancel } = useSpeech();
 
   // After the visitor says "just looking", the desk stays quiet until they walk away and come back.
   const armed = useRef(true);
 
+  // 0) Warm the speech engine up silently on the first click / key press (the intro form), long before it is needed
+  useEffect(() => armSpeechWarmup(), []);
+
   // 1) Call the visitor by name until they arrive (only before the very first greeting)
-  const calling =
-    phase === "waking" || (phase === "explore" && greetCount === 0);
   useEffect(() => {
     if (!calling || !name) return;
     const { setLine } = useGameStore.getState();
@@ -48,6 +72,7 @@ export default function Receptionist() {
 
     (async () => {
       await sleep(1200);
+      await idle(); // the first spoken line starts the browser's voice engine: do it on a quiet frame
       let i = 0;
       while (!stop) {
         const text = lines[i++ % lines.length];
@@ -68,8 +93,8 @@ export default function Receptionist() {
 
   // 2) Greeting, then hand over to the menu
   useEffect(() => {
-    if (phase !== "greeting") return;
-    const { setLine, setPhase } = useGameStore.getState();
+    if (!greeting) return;
+    const { setLine, setPhase, greetCount } = useGameStore.getState();
     const text =
       greetCount <= 1
         ? `Welcome, ${name}. What brings you to the office today?`
@@ -91,9 +116,9 @@ export default function Receptionist() {
       cancel();
       setLine("receptionist", null);
     };
-  }, [phase, greetCount, name, speak, cancel]);
+  }, [greeting, name, speak, cancel]);
 
-  // 3) Answer for the "look around" / "just stroll" menu choices
+  // 3) Answer for the "look around" menu choice
   useEffect(() => {
     if (!reply) return;
     armed.current = false;
